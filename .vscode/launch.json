@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "micro c compiler debug (LLDB)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/micro_cc",
+            "args": ["-o add", "/Users/parkyu/micro_cc/demo_add.c"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/",
+            "environment": [],
+            "MIMode": "lldb",
+            "preLaunchTask": "Build"
+        }
+    ]
+}
