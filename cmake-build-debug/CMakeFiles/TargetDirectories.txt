@@ -1,3 +1,0 @@
-/Users/parkyu/CLionProjects/micro_cc/cmake-build-debug/CMakeFiles/micro_cc.dir
-/Users/parkyu/CLionProjects/micro_cc/cmake-build-debug/CMakeFiles/edit_cache.dir
-/Users/parkyu/CLionProjects/micro_cc/cmake-build-debug/CMakeFiles/rebuild_cache.dir
