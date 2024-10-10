@@ -3,14 +3,15 @@
 //
 
 #include <stdio.h>
-#include <stdarg.h>
-#include "asm_arm64.h"
-#include "logger/logger.h"
 #include <vector>
+#include "asm_arm64.h"
+#include "logger.h"
+#include "file.h"
 
 using namespace std;
 
 #define ASM_TAG "arm64_asm"
+
 #define ARM_STACK_ALIGN 16
 #define ARM_BLOCK_32_ALIGN 4
 #define ARM_BLOCK_64_ALIGN 8
@@ -35,13 +36,6 @@ int alignStackSize(int reqSize) {
     }
     return blocks * ARM_STACK_ALIGN;
 }
-
-static void openFile(const char *fileName);
-
-static void writeFile(const char *format, ...);
-
-static void closeFile();
-
 
 static vector<StackVar *> currentStackVarList;
 static vector<char *> methodList;
@@ -936,7 +930,6 @@ void generateText(MirMethod *mirMethod) {
     writeFile("%s:\n", mirMethod->label);
     clearRegs();
     int methodStackSize = computeMethodStackSize(mirMethod);
-    logd(ASM_TAG, "[+] method %s stack size %d", mirMethod->label, methodStackSize);
     allocStack(methodStackSize);
     storeParamsToStack(mirMethod->param);
     MirCode *code = mirMethod->code;
@@ -973,33 +966,4 @@ void generateArm64Asm(Mir *mir, const char *assemblyFileName) {
         }
     }
     closeFile();
-}
-
-static FILE *assemblyFile = nullptr;
-
-static void openFile(const char *fileName) {
-    FILE *file = fopen(fileName, "w+");
-    if (file == nullptr) {
-        perror("Failed to open file");
-        assemblyFile = nullptr;
-    }
-    assemblyFile = file;
-}
-
-static void writeFile(const char *format, ...) {
-    if (assemblyFile == nullptr) {
-        fprintf(stderr, "Invalid file pointer\n");
-        return;
-    }
-    va_list args;
-    va_start(args, format);
-    vfprintf(assemblyFile, format, args);
-    va_end(args);
-    fflush(assemblyFile);
-}
-
-static void closeFile() {
-    if (assemblyFile != nullptr) {
-        fclose(assemblyFile);
-    }
 }

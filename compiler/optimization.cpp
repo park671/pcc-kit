@@ -3,7 +3,7 @@
 //
 
 #include "optimization.h"
-#include "logger/logger.h"
+#include "logger.h"
 #include <string.h>
 
 #define OPT_TAG "optimization"
@@ -150,17 +150,6 @@ void foldMir2(MirMethod *mirMethod) {
                 mirMethod->code = removeMirCode(mirMethod, mirCode);
             }
         }
-//        printMirCode(mirMethod);
-        mirCode = mirCode->nextCode;
-    }
-}
-
-//todo remove
-void printMirCode(MirMethod *mirMethod) {
-    logd(OPT_TAG, "---%s---", mirMethod->label);
-    MirCode *mirCode = mirMethod->code;
-    while (mirCode != nullptr) {
-        printMirCode(mirCode);
         mirCode = mirCode->nextCode;
     }
 }
@@ -185,6 +174,6 @@ Mir *optimize(Mir *mir) {
         foldMir2(mirMethod);
         mirMethod = mirMethod->next;
     }
-    printMirCode(mir);
+//    printMirCode(mir);
     return mir;
 }

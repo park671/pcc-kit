@@ -5,7 +5,7 @@
 #ifndef MICRO_CC_ASM_ARM64_H
 #define MICRO_CC_ASM_ARM64_H
 
-#include "mir.h"
+#include "../compiler/mir.h"
 
 //arm64 need 4byte alignment
 #define PAGE_ALIGNMENT 2

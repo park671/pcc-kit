@@ -1,38 +1,45 @@
-#include <iostream>
-#include <cstdio>
-#include <cstring>
-#include <cstdlib>
+#include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include "logger/logger.h"
-#include "lexer.h"
-#include "syntaxer.h"
-#include "mir.h"
-#include "optimization.h"
-#include "asm_arm64.h"
+#include "compiler/lexer.h"
+#include "compiler/syntaxer.h"
+#include "compiler/mir.h"
+#include "compiler/optimization.h"
+#include "generator/asm_arm64.h"
+#include "config.h"
 
 #define MAIN_TAG "main"
 
 static char *sourceFileName;
 static char *outputFileName;
 
+static void version() {
+    printf("\n");
+    printf("                        __         \n"
+           "                       /\\ \\        \n"
+           " _____      __     _ __\\ \\ \\/'\\    \n"
+           "/\\ '__`\\  /'__`\\  /\\`'__\\ \\ , <    \n"
+           "\\ \\ \\L\\ \\/\\ \\L\\.\\_\\ \\ \\/ \\ \\ \\\\`\\  \n"
+           " \\ \\ ,__/\\ \\__/.\\_\\\\ \\_\\  \\ \\_\\ \\_\\\n"
+           "  \\ \\ \\/  \\/__/\\/_/ \\/_/   \\/_/\\/_/\n"
+           "   \\ \\_\\                           \n"
+           "    \\/_/                           \n");
+    printf("park's c compiler kit\n");
+    printf("version %s\n", PROJECT_VERSION);
+    printf("build time:%s %s\n", __DATE__, __TIME__);
+}
 
 static void usage(int exitcode) {
+    version();
     fprintf(exitcode ? stderr : stdout,
-            "micro c comiler v0.1.102\n"
-            "Usage: mcc [-S|p|O|h] <file>\n\n"
+            "Usage: pcc [-S|p|O|h] <file>\n\n"
             "\n"
             "  -S                Stop before assembly (default)\n"
             "  -o filename       Output to the specified file\n"
             "  -O<number>        Does nothing at this moment\n"
             "  -h                print this help\n");
     exit(exitcode);
-}
-
-static void version() {
-    printf("micro c compiler\n");
-    printf("version 0.1\n");
-    printf("build time:2024-09-11\n");
-    exit(0);
 }
 
 void processParams(int argc, char **argv) {
@@ -56,6 +63,7 @@ void processParams(int argc, char **argv) {
                 usage(0);
             case 'v':
                 version();
+                exit(0);
                 break;
             default:
                 loge(MAIN_TAG, "[-] unknown opt=%d, arg=%s", opt, optarg);
@@ -66,16 +74,6 @@ void processParams(int argc, char **argv) {
         usage(1);
     sourceFileName = argv[optind];
     logd(MAIN_TAG, "[+] input file name=%s\n", sourceFileName);
-}
-
-void printTokenStack(Token *tokens) {
-    Token *p = tokens;
-    while (p != nullptr) {
-        if (p->tokenType != TOKEN_HEAD) {
-            logd(MAIN_TAG, "token:%s, content:%s", getTokenTypeName(p->tokenType), p->content);
-        }
-        p = p->next;
-    }
 }
 
 int main(int argc, char **argv) {

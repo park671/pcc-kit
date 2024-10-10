@@ -1,28 +1,57 @@
 cmake_minimum_required(VERSION 3.28)
-project(micro_cc)
+project(pcc VERSION 0.1.103)
+
+configure_file(
+        "${CMAKE_SOURCE_DIR}/config.h.in"
+        "${CMAKE_BINARY_DIR}/config.h"
+)
 
 set(CMAKE_CXX_STANDARD 17)
 
-include_directories("memory" "logger")
+include_directories(
+        ${CMAKE_BINARY_DIR}
+        "memory"
+        "logger"
+        "file"
+        "compiler"
+        "generator"
+)
 
-add_executable(micro_cc main.cpp
-        ast.h
-        lexer.cpp
-        lexer.h
-        logger/logger.cpp
-        logger/logger.h
-        syntaxer.cpp
-        syntaxer.h
-        mir.cpp
-        mir.h
-        token.h
-        asm_arm64.cpp
-        asm_arm64.h
-        bin_arm64.cpp
-        bin_arm64.h
-        optimization.cpp
-        optimization.h
-        memory/mspace.cpp
-        memory/mspace.h
-        #        test.cpp
+file(GLOB_RECURSE LOGGER_SRC
+        "logger/*.cc"
+        "logger/*.c"
+        "logger/*.cpp"
+)
+
+file(GLOB_RECURSE MEMORY_SRC
+        "memory/*.cc"
+        "memory/*.c"
+        "memory/*.cpp"
+)
+
+file(GLOB_RECURSE FILE_SRC
+        "file/*.cc"
+        "file/*.c"
+        "file/*.cpp"
+)
+
+file(GLOB_RECURSE COMPILER_SRC
+        "compiler/*.cc"
+        "compiler/*.c"
+        "compiler/*.cpp"
+)
+
+file(GLOB_RECURSE GENERATOR_SRC
+        "generator/*.cc"
+        "generator/*.c"
+        "generator/*.cpp"
+)
+
+add_executable(pcc
+        main.cpp
+        ${LOGGER_SRC}
+        ${MEMORY_SRC}
+        ${FILE_SRC}
+        ${COMPILER_SRC}
+        ${GENERATOR_SRC}
 )

@@ -2,7 +2,7 @@
 #include <cstdio>
 #include <string.h>
 #include "mir.h"
-#include "logger/logger.h"
+#include "logger.h"
 
 #define MIR_TAG "mir"
 

@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <cstring>
 #include "lexer.h"
-#include "logger/logger.h"
+#include "logger.h"
 #include <stack>
 #include <string>
 #include "mspace.h"
@@ -226,6 +226,16 @@ Token *buildTokens(const char *sourceFilePath) {
     }
     fclose(inputFile);
     return tokenHead;
+}
+
+void printTokenStack(Token *tokens) {
+    Token *p = tokens;
+    while (p != nullptr) {
+        if (p->tokenType != TOKEN_HEAD) {
+            logd(LEXER_TAG, "token:%s, content:%s", getTokenTypeName(p->tokenType), p->content);
+        }
+        p = p->next;
+    }
 }
 
 void releaseLexerMemory() {
