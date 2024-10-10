@@ -3,7 +3,7 @@
 //
 
 #include "optimization.h"
-#include "logger.h"
+#include "logger/logger.h"
 #include <string.h>
 
 #define OPT_TAG "optimization"

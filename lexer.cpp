@@ -3,19 +3,19 @@
 //
 #include <cstdio>
 #include <cstring>
-#include <cstdlib>
-#include "ast.h"
 #include "lexer.h"
-#include "logger.h"
+#include "logger/logger.h"
 #include <stack>
 #include <string>
+#include "mspace.h"
 
 using namespace std;
 
 //16KB
 #define BUFFER_SIZE 16384
 
-#define LEXER_TAG "lexer"
+static const char *LEXER_TAG = "lexer";
+static const char *VAR_TAG = "var";
 
 char *getTokenTypeName(TokenType tokenType) {
     switch (tokenType) {
@@ -93,7 +93,7 @@ inline static bool isBoundary(char a) {
 
 inline static char *makeCharsCopy(const char *origin) {
     int length = strlen(origin) + 1;
-    char *copy = (char *) malloc(sizeof(char) * length);
+    char *copy = (char *) pccMalloc(VAR_TAG, sizeof(char) * length);
     strcpy(copy, origin);
     return copy;
 }
@@ -101,7 +101,7 @@ inline static char *makeCharsCopy(const char *origin) {
 inline static Token *processCompletedString(Token *tail, string &tmp) {
     if (tmp != "") {
         if (tmp[0] >= '0' && tmp[0] <= '9') {
-            Token *token = (Token *) (malloc(sizeof(Token)));
+            Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
             token->tokenType = TOKEN_INTEGER;
             token->content = makeCharsCopy(tmp.c_str());
             tail->next = token;
@@ -111,7 +111,7 @@ inline static Token *processCompletedString(Token *tail, string &tmp) {
             bool flag = true;
             for (int i = 0; i < 5; i++) {
                 if (keywords[i] == tmp) {
-                    Token *token = (Token *) (malloc(sizeof(Token)));
+                    Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
                     token->tokenType = TOKEN_KEYWORD;
                     token->content = makeCharsCopy(tmp.c_str());
                     tail->next = token;
@@ -122,7 +122,7 @@ inline static Token *processCompletedString(Token *tail, string &tmp) {
             }
             for (int i = 0; i < 7; i++) {
                 if (types[i] == tmp) {
-                    Token *token = (Token *) (malloc(sizeof(Token)));
+                    Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
                     token->tokenType = TOKEN_TYPE;
                     token->content = makeCharsCopy(tmp.c_str());
                     tail->next = token;
@@ -132,7 +132,7 @@ inline static Token *processCompletedString(Token *tail, string &tmp) {
                 }
             }
             if (flag) {
-                Token *token = (Token *) (malloc(sizeof(Token)));
+                Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
                 token->tokenType = TOKEN_IDENTIFIER;
                 token->content = makeCharsCopy(tmp.c_str());
                 tail->next = token;
@@ -155,9 +155,9 @@ static Token *lexer(Token *tail, char *buffer) {
         }
         if (isBoundary(buffer[i])) {
             tail = processCompletedString(tail, tmp);
-            Token *token = (Token *) (malloc(sizeof(Token)));
+            Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
             token->tokenType = TOKEN_BOUNDARY;
-            char *content = (char *) malloc(sizeof(char) * 2);
+            char *content = (char *) pccMalloc(VAR_TAG, sizeof(char) * 2);
             content[0] = buffer[i];
             content[1] = '\0';
             token->content = content;
@@ -167,9 +167,9 @@ static Token *lexer(Token *tail, char *buffer) {
         } else if (isOperator(buffer[i])) {
             tail = processCompletedString(tail, tmp);
             if (i + 1 < length && buffer[i + 1] == '=') {
-                Token *token = (Token *) (malloc(sizeof(Token)));
+                Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
                 token->tokenType = TOKEN_OPERATOR_2;
-                char *content = (char *) malloc(sizeof(char) * 3);
+                char *content = (char *) pccMalloc(VAR_TAG, sizeof(char) * 3);
                 content[0] = buffer[i];
                 content[1] = buffer[i + 1];
                 content[2] = '\0';
@@ -179,9 +179,9 @@ static Token *lexer(Token *tail, char *buffer) {
 //                logd(LEXER_TAG, "[+]operator:%c%c", buffer[i], buffer[i + 1]);
                 i++;
             } else {
-                Token *token = (Token *) (malloc(sizeof(Token)));
+                Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
                 token->tokenType = TOKEN_OPERATOR;
-                char *content = (char *) malloc(sizeof(char) * 2);
+                char *content = (char *) pccMalloc(VAR_TAG, sizeof(char) * 2);
                 content[0] = buffer[i];
                 content[1] = '\0';
                 token->content = content;
@@ -192,9 +192,9 @@ static Token *lexer(Token *tail, char *buffer) {
         } else if (isBoolOperator(buffer[i])) {
             tail = processCompletedString(tail, tmp);
             if (i + 1 < length && buffer[i + 1] == buffer[i]) {
-                Token *token = (Token *) (malloc(sizeof(Token)));
+                Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
                 token->tokenType = TOKEN_BOOL;
-                char *content = (char *) malloc(sizeof(char) * 3);
+                char *content = (char *) pccMalloc(VAR_TAG, sizeof(char) * 3);
                 content[0] = buffer[i];
                 content[1] = buffer[i + 1];
                 content[2] = '\0';
@@ -216,7 +216,7 @@ Token *buildTokens(const char *sourceFilePath) {
     logd(LEXER_TAG, "lexical analysis...");
     FILE *inputFile = fopen(sourceFilePath, "r");
     char buffer[BUFFER_SIZE];
-    Token *tokenHead = (Token *) (malloc(sizeof(Token)));
+    Token *tokenHead = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
     tokenHead->tokenType = TOKEN_HEAD;
     Token *tokenTail = tokenHead;
     while (fgets(buffer, BUFFER_SIZE, inputFile) != NULL) {
@@ -226,4 +226,8 @@ Token *buildTokens(const char *sourceFilePath) {
     }
     fclose(inputFile);
     return tokenHead;
+}
+
+void releaseLexerMemory() {
+    pccFreeSpace(LEXER_TAG);
 }

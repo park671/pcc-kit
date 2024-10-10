@@ -2,12 +2,12 @@
 // Created by Park Yu on 2024/9/11.
 //
 
-#include <cstdlib>
-#include "syntaxer.h"
-#include "logger.h"
-#include "string.h"
 #include <stack>
 #include <vector>
+#include "syntaxer.h"
+#include "logger/logger.h"
+#include "string.h"
+#include "mspace.h"
 
 using namespace std;
 
@@ -81,17 +81,17 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             if (token == nullptr) {
                 astProgram->methodSeq = nullptr;
             } else {
-                astProgram->methodSeq = (AstMethodSeq *) malloc(sizeof(AstMethodSeq));
+                astProgram->methodSeq = (AstMethodSeq *) pccMalloc(SYNTAX_TAG, sizeof(AstMethodSeq));
                 token = travelAst(token, astProgram->methodSeq, NODE_METHOD_SEQ);
             }
             break;
         }
         case NODE_METHOD_SEQ: {
             AstMethodSeq *astMethodSeq = (AstMethodSeq *) currentNode;
-            astMethodSeq->methodDefine = (AstMethodDefine *) malloc(sizeof(AstMethodDefine));
+            astMethodSeq->methodDefine = (AstMethodDefine *) pccMalloc(SYNTAX_TAG, sizeof(AstMethodDefine));
             token = travelAst(token, astMethodSeq->methodDefine, NODE_METHOD_DEFINE);
             if (token != nullptr) {
-                astMethodSeq->nextAstMethodSeq = (AstMethodSeq *) malloc(sizeof(AstMethodSeq));
+                astMethodSeq->nextAstMethodSeq = (AstMethodSeq *) pccMalloc(SYNTAX_TAG, sizeof(AstMethodSeq));
                 token = travelAst(token, astMethodSeq->nextAstMethodSeq, NODE_METHOD_SEQ);
             }
             break;
@@ -103,7 +103,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 loge(SYNTAX_TAG, "[-]error: method define need type: %s", token->content);
                 return nullptr;
             }
-            astMethodDefine->type = (AstType *) malloc(sizeof(AstType));
+            astMethodDefine->type = (AstType *) pccMalloc(SYNTAX_TAG, sizeof(AstType));
             astMethodDefine->type->primitiveType = convertTokenType2PrimitiveType(token->content);
             token = token->next;
             //method name
@@ -111,7 +111,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 loge(SYNTAX_TAG, "[-]error: method define need identifier: %s", token->content);
                 return nullptr;
             }
-            astMethodDefine->identity = (AstIdentity *) malloc(sizeof(AstIdentity));
+            astMethodDefine->identity = (AstIdentity *) pccMalloc(SYNTAX_TAG, sizeof(AstIdentity));
             astMethodDefine->identity->name = token->content;
             token = token->next;
             //method (
@@ -125,7 +125,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, ")") == 0) {
                 astMethodDefine->paramList = nullptr;
             } else {
-                astMethodDefine->paramList = (AstParamList *) malloc(sizeof(AstParamList));
+                astMethodDefine->paramList = (AstParamList *) pccMalloc(SYNTAX_TAG, sizeof(AstParamList));
                 token = travelAst(token, astMethodDefine->paramList, NODE_PARAM_LIST);
             }
             //method )
@@ -135,19 +135,19 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             }
             token = token->next;
             //method code block
-            astMethodDefine->statementBlock = (AstStatementBlock *) malloc(sizeof(AstStatementBlock));
+            astMethodDefine->statementBlock = (AstStatementBlock *) pccMalloc(SYNTAX_TAG, sizeof(AstStatementBlock));
             token = travelAst(token, astMethodDefine->statementBlock, NODE_STATEMENT_BLOCK);
             popMethod();
             break;
         }
         case NODE_PARAM_LIST: {
             AstParamList *astParamList = (AstParamList *) currentNode;
-            astParamList->paramDefine = (AstParamDefine *) malloc(sizeof(AstParamDefine));
+            astParamList->paramDefine = (AstParamDefine *) pccMalloc(SYNTAX_TAG, sizeof(AstParamDefine));
             token = travelAst(token, astParamList->paramDefine, NODE_PARAM_DEFINE);
             if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, ",") == 0) {
                 //consume ","
                 token = token->next;
-                astParamList->next = (AstParamList *) malloc(sizeof(AstParamList));
+                astParamList->next = (AstParamList *) pccMalloc(SYNTAX_TAG, sizeof(AstParamList));
                 token = travelAst(token, astParamList->next, NODE_PARAM_LIST);
             } else {
                 astParamList->next = nullptr;
@@ -160,14 +160,14 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 loge(SYNTAX_TAG, "[-]error: param define need type: %s", token->content);
                 return nullptr;
             }
-            astParamDefine->type = (AstType *) malloc(sizeof(AstType));
+            astParamDefine->type = (AstType *) pccMalloc(SYNTAX_TAG, sizeof(AstType));
             astParamDefine->type->primitiveType = convertTokenType2PrimitiveType(token->content);
             token = token->next;
             if (token->tokenType != TOKEN_IDENTIFIER) {
                 loge(SYNTAX_TAG, "[-]error: param define need identifier: %s", token->content);
                 return nullptr;
             }
-            astParamDefine->identity = (AstIdentity *) malloc(sizeof(AstIdentity));
+            astParamDefine->identity = (AstIdentity *) pccMalloc(SYNTAX_TAG, sizeof(AstIdentity));
             astParamDefine->identity->name = token->content;
             addVar(astParamDefine->identity);
             token = token->next;
@@ -185,7 +185,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, "}") == 0) {
                 astStatementBlock->statementSeq = nullptr;
             } else {
-                astStatementBlock->statementSeq = (AstStatementSeq *) malloc(sizeof(AstStatementSeq));
+                astStatementBlock->statementSeq = (AstStatementSeq *) pccMalloc(SYNTAX_TAG, sizeof(AstStatementSeq));
                 token = travelAst(token, astStatementBlock->statementSeq, NODE_STATEMENT_SEQ);
             }
             //block }
@@ -198,12 +198,12 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
         }
         case NODE_STATEMENT_SEQ: {
             AstStatementSeq *astStatementSeq = (AstStatementSeq *) currentNode;
-            astStatementSeq->statement = (AstStatement *) malloc(sizeof(AstStatement));
+            astStatementSeq->statement = (AstStatement *) pccMalloc(SYNTAX_TAG, sizeof(AstStatement));
             token = travelAst(token, astStatementSeq->statement, NODE_STATEMENT);
             if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, "}") == 0) {
                 astStatementSeq->next = nullptr;
             } else {
-                astStatementSeq->next = (AstStatementSeq *) malloc(sizeof(AstStatementSeq));
+                astStatementSeq->next = (AstStatementSeq *) pccMalloc(SYNTAX_TAG, sizeof(AstStatementSeq));
                 token = travelAst(token, astStatementSeq->next, NODE_STATEMENT_SEQ);
             }
             break;
@@ -213,40 +213,43 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             if (token->tokenType == TOKEN_KEYWORD) {
                 if (strcmp(token->content, "if") == 0) {
                     astStatement->statementType = STATEMENT_IF;
-                    astStatement->ifStatement = (AstStatementIf *) malloc(sizeof(AstStatementIf));
+                    astStatement->ifStatement = (AstStatementIf *) pccMalloc(SYNTAX_TAG, sizeof(AstStatementIf));
                     //consume if
                     token = token->next;
                     token = travelAst(token, astStatement->ifStatement, NODE_STATEMENT_IF);
                 } else if (strcmp(token->content, "while") == 0) {
                     astStatement->statementType = STATEMENT_WHILE;
-                    astStatement->whileStatement = (AstStatementWhile *) malloc(sizeof(AstStatementWhile));
+                    astStatement->whileStatement = (AstStatementWhile *) pccMalloc(SYNTAX_TAG,
+                                                                                   sizeof(AstStatementWhile));
                     //consume while
                     token = token->next;
                     token = travelAst(token, astStatement->whileStatement, NODE_STATEMENT_WHILE);
                 } else if (strcmp(token->content, "for") == 0) {
                     astStatement->statementType = STATEMENT_FOR;
-                    astStatement->forStatement = (AstStatementFor *) malloc(sizeof(AstStatementFor));
+                    astStatement->forStatement = (AstStatementFor *) pccMalloc(SYNTAX_TAG, sizeof(AstStatementFor));
                     //consume for
                     token = token->next;
                     token = travelAst(token, astStatement->forStatement, NODE_STATEMENT_FOR);
                 } else if (strcmp(token->content, "return") == 0) {
                     astStatement->statementType = STATEMENT_RETURN;
-                    astStatement->returnStatement = (AstStatementReturn *) malloc(sizeof(AstStatementReturn));
+                    astStatement->returnStatement = (AstStatementReturn *) pccMalloc(SYNTAX_TAG,
+                                                                                     sizeof(AstStatementReturn));
                     //consume return
                     token = token->next;
                     token = travelAst(token, astStatement->forStatement, NODE_STATEMENT_RETURN);
                 }
             } else if (token->tokenType == TOKEN_TYPE) {
                 astStatement->statementType = STATEMENT_DEFINE;
-                astStatement->defineStatement = (AstStatementDefine *) malloc(sizeof(AstStatementDefine));
-                astStatement->defineStatement->type = (AstType *) malloc(sizeof(AstType));
+                astStatement->defineStatement = (AstStatementDefine *) pccMalloc(SYNTAX_TAG,
+                                                                                 sizeof(AstStatementDefine));
+                astStatement->defineStatement->type = (AstType *) pccMalloc(SYNTAX_TAG, sizeof(AstType));
                 astStatement->defineStatement->type->primitiveType = convertTokenType2PrimitiveType(token->content);
                 token = token->next;
                 if (token->tokenType != TOKEN_IDENTIFIER) {
                     loge(SYNTAX_TAG, "[-]error: var define need identifier: %s", token->content);
                     return nullptr;
                 }
-                astStatement->defineStatement->identity = (AstIdentity *) malloc(sizeof(AstIdentity));
+                astStatement->defineStatement->identity = (AstIdentity *) pccMalloc(SYNTAX_TAG, sizeof(AstIdentity));
                 astStatement->defineStatement->identity->name = token->content;
                 //record
                 addVar(astStatement->defineStatement->identity);
@@ -257,8 +260,8 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 }
                 //consume =
                 token = token->next;
-                astStatement->defineStatement->expression = (AstExpression *) malloc(
-                        sizeof(AstExpression));
+                astStatement->defineStatement->expression = (AstExpression *) pccMalloc(SYNTAX_TAG,
+                                                                                        sizeof(AstExpression));
                 token = travelAst(token, astStatement->defineStatement->expression, NODE_EXPRESSION);
                 if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ";") != 0) {
                     loge(SYNTAX_TAG, "[-]error: need ;: %s", token->content);
@@ -269,7 +272,8 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, "{") == 0) {
                     //do not consume {, left it to block statement
                     astStatement->statementType = STATEMENT_BLOCK;
-                    astStatement->blockStatement = (AstStatementBlock *) malloc(sizeof(AstStatementBlock));
+                    astStatement->blockStatement = (AstStatementBlock *) pccMalloc(SYNTAX_TAG,
+                                                                                   sizeof(AstStatementBlock));
                     token = travelAst(token, astStatement->blockStatement, NODE_STATEMENT_BLOCK);
                 } else if (token->tokenType == TOKEN_IDENTIFIER
                            && token->next != nullptr
@@ -279,8 +283,8 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                     //this is method call
                     if (hasMethodDefine(token->content)) {
                         astStatement->statementType = STATEMENT_METHOD_CALL;
-                        astStatement->methodCallStatement = (AstStatementMethodCall *) malloc(
-                                sizeof(AstStatementMethodCall));
+                        astStatement->methodCallStatement = (AstStatementMethodCall *) pccMalloc(SYNTAX_TAG,
+                                                                                                 sizeof(AstStatementMethodCall));
                         token = travelAst(token, astStatement->methodCallStatement, NODE_STATEMENT_METHOD_CALL);
                     } else {
                         loge(SYNTAX_TAG, "[-]error: undefined method: %s", token->content);
@@ -289,8 +293,8 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 } else {
                     //assume this is expressions statement
                     astStatement->statementType = STATEMENT_EXPRESSION;
-                    astStatement->expressionsStatement = (AstStatementExpressions *) malloc(
-                            sizeof(AstStatementExpressions));
+                    astStatement->expressionsStatement = (AstStatementExpressions *) pccMalloc(SYNTAX_TAG,
+                                                                                               sizeof(AstStatementExpressions));
                     token = travelAst(token, astStatement->expressionsStatement, NODE_STATEMENT_EXPRESSIONS);
                 }
             }
@@ -301,7 +305,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, ";") == 0) {
                 astStatementExpressions->expression = nullptr;
             } else {
-                astStatementExpressions->expression = (AstExpression *) malloc(sizeof(AstExpression));
+                astStatementExpressions->expression = (AstExpression *) pccMalloc(SYNTAX_TAG, sizeof(AstExpression));
                 token = travelAst(token, astStatementExpressions->expression, NODE_EXPRESSION);
             }
             //consume ;
@@ -317,8 +321,8 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 //assignment
                 if (hasVarDefine(token->content)) {
                     astExpression->expressionType = EXPRESSION_ASSIGNMENT;
-                    astExpression->assignmentExpression = (AstExpressionAssignment *) malloc(
-                            sizeof(AstExpressionAssignment));
+                    astExpression->assignmentExpression = (AstExpressionAssignment *) pccMalloc(SYNTAX_TAG,
+                                                                                                sizeof(AstExpressionAssignment));
                     token = travelAst(token, astExpression->assignmentExpression, NODE_EXPRESSION_ASSIGNMENT);
                 } else {
                     loge(SYNTAX_TAG, "[-]error: undefined var: %s", token->content);
@@ -326,15 +330,15 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 break;
             } else {
                 astExpression->expressionType = EXPRESSION_ARITHMETIC;
-                astExpression->arithmeticExpression = (AstExpressionArithmetic *) malloc(
-                        sizeof(AstExpressionArithmetic));
+                astExpression->arithmeticExpression = (AstExpressionArithmetic *) pccMalloc(SYNTAX_TAG,
+                                                                                            sizeof(AstExpressionArithmetic));
                 token = travelAst(token, astExpression->arithmeticExpression, NODE_EXPRESSION_ARITHMETIC);
             }
             break;
         }
         case NODE_EXPRESSION_ASSIGNMENT: {
             AstExpressionAssignment *astExpressionAssignment = (AstExpressionAssignment *) currentNode;
-            astExpressionAssignment->identity = (AstIdentity *) malloc(sizeof(AstIdentity));
+            astExpressionAssignment->identity = (AstIdentity *) pccMalloc(SYNTAX_TAG, sizeof(AstIdentity));
             astExpressionAssignment->identity->name = token->content;
             //consume identity
             token = token->next;
@@ -344,20 +348,20 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             }
             //consume =
             token = token->next;
-            astExpressionAssignment->expression = (AstExpression *) malloc(
-                    sizeof(AstExpression));
+            astExpressionAssignment->expression = (AstExpression *) pccMalloc(SYNTAX_TAG,
+                                                                              sizeof(AstExpression));
             token = travelAst(token, astExpressionAssignment->expression,
                               NODE_EXPRESSION);
             break;
         }
         case NODE_OBJECT_LIST: {
             AstObjectList *astObjectList = (AstObjectList *) currentNode;
-            astObjectList->expression = (AstExpression *) malloc(sizeof(AstExpression));
+            astObjectList->expression = (AstExpression *) pccMalloc(SYNTAX_TAG, sizeof(AstExpression));
             token = travelAst(token, astObjectList->expression, NODE_EXPRESSION);
             if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, ",") == 0) {
                 //consume ,
                 token = token->next;
-                astObjectList->objectMore = (AstObjectList *) malloc(sizeof(AstObjectList));
+                astObjectList->objectMore = (AstObjectList *) pccMalloc(SYNTAX_TAG, sizeof(AstObjectList));
                 token = travelAst(token, astObjectList->objectMore, NODE_OBJECT_LIST);
             }
             break;
@@ -370,7 +374,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             }
             //consume (
             token = token->next;
-            astStatementIf->expression = (AstExpressionBool *) malloc(sizeof(AstExpressionBool));
+            astStatementIf->expression = (AstExpressionBool *) pccMalloc(SYNTAX_TAG, sizeof(AstExpressionBool));
             token = travelAst(token, astStatementIf->expression, NODE_EXPRESSION_BOOL);
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ")") != 0) {
                 loge(SYNTAX_TAG, "[-]error: need ): %s", token->content);
@@ -378,14 +382,14 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             }
             //consume )
             token = token->next;
-            astStatementIf->trueStatement = (AstStatement *) malloc(sizeof(AstStatement));
+            astStatementIf->trueStatement = (AstStatement *) pccMalloc(SYNTAX_TAG, sizeof(AstStatement));
             token = travelAst(token, astStatementIf->trueStatement, NODE_STATEMENT);
             if (token->tokenType != TOKEN_KEYWORD || strcmp(token->content, "else") != 0) {
                 astStatementIf->falseStatement = nullptr;
             } else {
                 //consume else
                 token = token->next;
-                astStatementIf->falseStatement = (AstStatement *) malloc(sizeof(AstStatement));
+                astStatementIf->falseStatement = (AstStatement *) pccMalloc(SYNTAX_TAG, sizeof(AstStatement));
                 token = travelAst(token, astStatementIf->falseStatement, NODE_STATEMENT);
             }
             break;
@@ -398,7 +402,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             }
             //consume (
             token = token->next;
-            astStatementWhile->expression = (AstExpressionBool *) malloc(sizeof(AstExpressionBool));
+            astStatementWhile->expression = (AstExpressionBool *) pccMalloc(SYNTAX_TAG, sizeof(AstExpressionBool));
             token = travelAst(token, astStatementWhile->expression, NODE_EXPRESSION_BOOL);
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ")") != 0) {
                 loge(SYNTAX_TAG, "[-]error: need ): %s", token->content);
@@ -406,7 +410,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             }
             //consume )
             token = token->next;
-            astStatementWhile->statement = (AstStatement *) malloc(sizeof(AstStatement));
+            astStatementWhile->statement = (AstStatement *) pccMalloc(SYNTAX_TAG, sizeof(AstStatement));
             token = travelAst(token, astStatementWhile->statement, NODE_STATEMENT);
             break;
         }
@@ -421,7 +425,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, ";") == 0) {
                 astStatementFor->initExpression = nullptr;
             } else {
-                astStatementFor->initExpression = (AstExpression *) malloc(sizeof(AstExpression));
+                astStatementFor->initExpression = (AstExpression *) pccMalloc(SYNTAX_TAG, sizeof(AstExpression));
                 token = travelAst(token, astStatementFor->initExpression, NODE_EXPRESSION);
             }
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ";") != 0) {
@@ -433,7 +437,8 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, ";") == 0) {
                 astStatementFor->controlExpression = nullptr;
             } else {
-                astStatementFor->controlExpression = (AstExpressionBool *) malloc(sizeof(AstExpressionBool));
+                astStatementFor->controlExpression = (AstExpressionBool *) pccMalloc(SYNTAX_TAG,
+                                                                                     sizeof(AstExpressionBool));
                 token = travelAst(token, astStatementFor->controlExpression, NODE_EXPRESSION_BOOL);
             }
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ";") != 0) {
@@ -445,7 +450,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, ")") == 0) {
                 astStatementFor->afterExpression = nullptr;
             } else {
-                astStatementFor->afterExpression = (AstExpression *) malloc(sizeof(AstExpression));
+                astStatementFor->afterExpression = (AstExpression *) pccMalloc(SYNTAX_TAG, sizeof(AstExpression));
                 token = travelAst(token, astStatementFor->afterExpression, NODE_EXPRESSION);
             }
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ")") != 0) {
@@ -454,7 +459,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             }
             //consume )
             token = token->next;
-            astStatementFor->statement = (AstStatement *) malloc(sizeof(AstStatement));
+            astStatementFor->statement = (AstStatement *) pccMalloc(SYNTAX_TAG, sizeof(AstStatement));
             token = travelAst(token, astStatementFor->statement, NODE_STATEMENT);
             break;
         }
@@ -465,7 +470,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 //todo check return type with method signature
                 astStatementReturn->expression = nullptr;
             } else {
-                astStatementReturn->expression = (AstExpression *) malloc(sizeof(AstExpression));
+                astStatementReturn->expression = (AstExpression *) pccMalloc(SYNTAX_TAG, sizeof(AstExpression));
                 token = travelAst(token, astStatementReturn->expression, NODE_EXPRESSION);
             }
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ";") != 0) {
@@ -478,11 +483,13 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
         }
         case NODE_EXPRESSION_ARITHMETIC: {
             AstExpressionArithmetic *astExpressionArithmetic = (AstExpressionArithmetic *) currentNode;
-            astExpressionArithmetic->arithmeticItem = (AstArithmeticItem *) malloc(sizeof(AstArithmeticItem));
+            astExpressionArithmetic->arithmeticItem = (AstArithmeticItem *) pccMalloc(SYNTAX_TAG,
+                                                                                      sizeof(AstArithmeticItem));
             token = travelAst(token, astExpressionArithmetic->arithmeticItem, NODE_ARITHMETIC_ITEM);
             if (token->tokenType == TOKEN_OPERATOR) {
                 if (strcmp(token->content, "+") == 0 || strcmp(token->content, "-") == 0) {
-                    astExpressionArithmetic->arithmeticExpressMore = (AstExpressionArithmeticMore *) malloc(
+                    astExpressionArithmetic->arithmeticExpressMore = (AstExpressionArithmeticMore *) pccMalloc(
+                            SYNTAX_TAG,
                             sizeof(AstExpressionArithmeticMore));
                     token = travelAst(token, astExpressionArithmetic->arithmeticExpressMore,
                                       NODE_EXPRESSION_ARITHMETIC_MORE);
@@ -504,10 +511,12 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             }
             //consume + -
             token = token->next;
-            astExpressionArithmeticMore->arithmeticItem = (AstArithmeticItem *) malloc(sizeof(AstArithmeticItem));
+            astExpressionArithmeticMore->arithmeticItem = (AstArithmeticItem *) pccMalloc(SYNTAX_TAG,
+                                                                                          sizeof(AstArithmeticItem));
             token = travelAst(token, astExpressionArithmeticMore->arithmeticItem, NODE_ARITHMETIC_ITEM);
             if (strcmp(token->content, "+") == 0 || strcmp(token->content, "-") == 0) {
-                astExpressionArithmeticMore->arithmeticExpressMore = (AstExpressionArithmeticMore *) malloc(
+                astExpressionArithmeticMore->arithmeticExpressMore = (AstExpressionArithmeticMore *) pccMalloc(
+                        SYNTAX_TAG,
                         sizeof(AstExpressionArithmeticMore));
                 token = travelAst(token, astExpressionArithmeticMore->arithmeticExpressMore,
                                   NODE_EXPRESSION_ARITHMETIC_MORE);
@@ -518,14 +527,15 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
         }
         case NODE_ARITHMETIC_ITEM: {
             AstArithmeticItem *astArithmeticItem = (AstArithmeticItem *) currentNode;
-            astArithmeticItem->arithmeticFactor = (AstArithmeticFactor *) malloc(sizeof(AstArithmeticFactor));
+            astArithmeticItem->arithmeticFactor = (AstArithmeticFactor *) pccMalloc(SYNTAX_TAG,
+                                                                                    sizeof(AstArithmeticFactor));
             token = travelAst(token, astArithmeticItem->arithmeticFactor, NODE_ARITHMETIC_FACTOR);
             if (token->tokenType == TOKEN_OPERATOR) {
                 if (strcmp(token->content, "*") == 0
                     || strcmp(token->content, "/") == 0
                     || strcmp(token->content, "%") == 0) {
-                    astArithmeticItem->arithmeticItemMore = (AstArithmeticItemMore *) malloc(
-                            sizeof(AstArithmeticItemMore));
+                    astArithmeticItem->arithmeticItemMore = (AstArithmeticItemMore *) pccMalloc(SYNTAX_TAG,
+                                                                                                sizeof(AstArithmeticItemMore));
                     token = travelAst(token, astArithmeticItem->arithmeticItemMore,
                                       NODE_ARITHMETIC_ITEM_MORE);
                 } else {
@@ -547,14 +557,15 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             }
             //consume * / %
             token = token->next;
-            astArithmeticItemMore->arithmeticFactor = (AstArithmeticFactor *) malloc(sizeof(AstArithmeticFactor));
+            astArithmeticItemMore->arithmeticFactor = (AstArithmeticFactor *) pccMalloc(SYNTAX_TAG,
+                                                                                        sizeof(AstArithmeticFactor));
             token = travelAst(token, astArithmeticItemMore->arithmeticFactor, NODE_ARITHMETIC_FACTOR);
             if (token->tokenType == TOKEN_OPERATOR) {
                 if (strcmp(token->content, "*") == 0
                     || strcmp(token->content, "/") == 0
                     || strcmp(token->content, "%") == 0) {
-                    astArithmeticItemMore->arithmeticItemMore = (AstArithmeticItemMore *) malloc(
-                            sizeof(AstArithmeticItemMore));
+                    astArithmeticItemMore->arithmeticItemMore = (AstArithmeticItemMore *) pccMalloc(SYNTAX_TAG,
+                                                                                                    sizeof(AstArithmeticItemMore));
                     token = travelAst(token, astArithmeticItemMore->arithmeticItemMore,
                                       NODE_ARITHMETIC_ITEM_MORE);
                 } else {
@@ -572,8 +583,8 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                     //method return val
                     if (hasMethodDefine(token->content)) {
                         astArithmeticFactor->factorType = ARITHMETIC_METHOD_RET;
-                        astArithmeticFactor->methodCall = (AstStatementMethodCall *) malloc(
-                                sizeof(AstStatementMethodCall));
+                        astArithmeticFactor->methodCall = (AstStatementMethodCall *) pccMalloc(SYNTAX_TAG,
+                                                                                               sizeof(AstStatementMethodCall));
                         token = travelAst(token, astArithmeticFactor->methodCall, NODE_STATEMENT_METHOD_CALL);
                         //do not consume method call's ;
                     } else {
@@ -583,7 +594,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 } else {
                     if (hasVarDefine(token->content)) {
                         astArithmeticFactor->factorType = ARITHMETIC_IDENTITY;
-                        astArithmeticFactor->identity = (AstIdentity *) malloc(sizeof(AstIdentity));
+                        astArithmeticFactor->identity = (AstIdentity *) pccMalloc(SYNTAX_TAG, sizeof(AstIdentity));
                         astArithmeticFactor->identity->name = token->content;
                         //consume identifier
                         token = token->next;
@@ -628,7 +639,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
         }
         case NODE_STATEMENT_METHOD_CALL: {
             AstStatementMethodCall *astStatementMethodCall = (AstStatementMethodCall *) currentNode;
-            astStatementMethodCall->identity = (AstIdentity *) malloc(sizeof(AstIdentity));
+            astStatementMethodCall->identity = (AstIdentity *) pccMalloc(SYNTAX_TAG, sizeof(AstIdentity));
             astStatementMethodCall->identity->name = token->content;
             token = token->next;
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, "(") != 0) {
@@ -639,8 +650,8 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, ")") == 0) {
                 astStatementMethodCall->objectList = nullptr;
             } else {
-                astStatementMethodCall->objectList = (AstObjectList *) malloc(
-                        sizeof(AstObjectList));
+                astStatementMethodCall->objectList = (AstObjectList *) pccMalloc(SYNTAX_TAG,
+                                                                                 sizeof(AstObjectList));
                 token = travelAst(token, astStatementMethodCall->objectList,
                                   NODE_OBJECT_LIST);
             }
@@ -657,11 +668,11 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
         }
         case NODE_EXPRESSION_BOOL: {
             AstExpressionBool *astExpressionBool = (AstExpressionBool *) currentNode;
-            astExpressionBool->boolItem = (AstBoolItem *) malloc(sizeof(AstBoolItem));
+            astExpressionBool->boolItem = (AstBoolItem *) pccMalloc(SYNTAX_TAG, sizeof(AstBoolItem));
             token = travelAst(token, astExpressionBool->boolItem, NODE_BOOL_ITEM);
             if (token->tokenType == TOKEN_BOOL && strcmp(token->content, "||") == 0) {
                 //must be ||
-                astExpressionBool->next = (AstExpressionBool *) malloc(sizeof(AstExpressionBool));
+                astExpressionBool->next = (AstExpressionBool *) pccMalloc(SYNTAX_TAG, sizeof(AstExpressionBool));
                 token = travelAst(token, astExpressionBool->next, NODE_EXPRESSION_BOOL);
             } else {
                 astExpressionBool->next = nullptr;
@@ -670,11 +681,11 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
         }
         case NODE_BOOL_ITEM: {
             AstBoolItem *astBoolItem = (AstBoolItem *) currentNode;
-            astBoolItem->boolFactor = (AstBoolFactor *) malloc(sizeof(AstBoolFactor));
+            astBoolItem->boolFactor = (AstBoolFactor *) pccMalloc(SYNTAX_TAG, sizeof(AstBoolFactor));
             token = travelAst(token, astBoolItem->boolFactor, NODE_BOOL_FACTOR);
             if (token->tokenType == TOKEN_BOOL && strcmp(token->content, "&&") == 0) {
                 // must be &&
-                astBoolItem->next = (AstBoolItem *) malloc(sizeof(AstBoolItem));
+                astBoolItem->next = (AstBoolItem *) pccMalloc(SYNTAX_TAG, sizeof(AstBoolItem));
                 token = travelAst(token, astBoolItem->next, NODE_BOOL_ITEM);
             } else {
                 astBoolItem->next = nullptr;
@@ -685,12 +696,13 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             AstBoolFactor *astBoolFactor = (AstBoolFactor *) currentNode;
             if (strcmp(token->content, "!") == 0) {
                 astBoolFactor->boolFactorType = BOOL_FACTOR_INVERT;
-                astBoolFactor->invertBoolFactor = (AstBoolFactorInvert *) malloc(sizeof(AstBoolFactorInvert));
+                astBoolFactor->invertBoolFactor = (AstBoolFactorInvert *) pccMalloc(SYNTAX_TAG,
+                                                                                    sizeof(AstBoolFactorInvert));
                 token = travelAst(token, astBoolFactor->invertBoolFactor, NODE_BOOL_FACTOR_INVERT);
             } else {
                 astBoolFactor->boolFactorType = BOOL_FACTOR_RELATION;
-                astBoolFactor->arithmeticBoolFactor = (AstBoolFactorCompareArithmetic *) malloc(
-                        sizeof(AstBoolFactorCompareArithmetic));
+                astBoolFactor->arithmeticBoolFactor = (AstBoolFactorCompareArithmetic *) pccMalloc(SYNTAX_TAG,
+                                                                                                   sizeof(AstBoolFactorCompareArithmetic));
                 token = travelAst(token, astBoolFactor->arithmeticBoolFactor,
                                   NODE_BOOL_FACTOR_COMPARE_ARITHMETIC);
             }
@@ -704,13 +716,14 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             }
             //consume !
             token = token->next;
-            astBoolFactorInvert->boolFactor = (AstBoolFactor *) malloc(sizeof(AstBoolFactor));
+            astBoolFactorInvert->boolFactor = (AstBoolFactor *) pccMalloc(SYNTAX_TAG, sizeof(AstBoolFactor));
             token = travelAst(token, astBoolFactorInvert->boolFactor, NODE_BOOL_FACTOR);
             break;
         }
         case NODE_BOOL_FACTOR_COMPARE_ARITHMETIC: {
             AstBoolFactorCompareArithmetic *astBoolFactorCompareArithmetic = (AstBoolFactorCompareArithmetic *) currentNode;
-            astBoolFactorCompareArithmetic->firstArithmeticExpression = (AstExpressionArithmetic *) malloc(
+            astBoolFactorCompareArithmetic->firstArithmeticExpression = (AstExpressionArithmetic *) pccMalloc(
+                    SYNTAX_TAG,
                     sizeof(AstExpressionArithmetic));
             token = travelAst(token, astBoolFactorCompareArithmetic->firstArithmeticExpression,
                               NODE_EXPRESSION_ARITHMETIC);
@@ -738,7 +751,8 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             //consume relation op
             token = token->next;
 
-            astBoolFactorCompareArithmetic->secondArithmeticExpression = (AstExpressionArithmetic *) malloc(
+            astBoolFactorCompareArithmetic->secondArithmeticExpression = (AstExpressionArithmetic *) pccMalloc(
+                    SYNTAX_TAG,
                     sizeof(AstExpressionArithmetic));
             token = travelAst(token, astBoolFactorCompareArithmetic->secondArithmeticExpression,
                               NODE_EXPRESSION_ARITHMETIC);
@@ -750,10 +764,14 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
 
 AstProgram *buildAst(Token *token) {
     logd(SYNTAX_TAG, "syntax analysis...");
-    AstProgram *program = (AstProgram *) malloc(sizeof(AstProgram));
+    AstProgram *program = (AstProgram *) pccMalloc(SYNTAX_TAG, sizeof(AstProgram));
     if (token != nullptr && token->tokenType == TOKEN_HEAD) {
         token = token->next;
     }
     travelAst(token, program, NODE_PROGRAM);
     return program;
+}
+
+void releaseAstMemory() {
+    pccFreeSpace(SYNTAX_TAG);
 }

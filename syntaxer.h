@@ -10,6 +10,6 @@
 
 AstProgram *buildAst(Token *token);
 
-void releaseAst(AstProgram *program);
+void releaseAstMemory();
 
 #endif //MICRO_CC_SYNTAXER_H

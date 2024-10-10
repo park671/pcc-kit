@@ -3,12 +3,14 @@ project(micro_cc)
 
 set(CMAKE_CXX_STANDARD 17)
 
+include_directories("memory" "logger")
+
 add_executable(micro_cc main.cpp
         ast.h
         lexer.cpp
         lexer.h
-        logger.cpp
-        logger.h
+        logger/logger.cpp
+        logger/logger.h
         syntaxer.cpp
         syntaxer.h
         mir.cpp
@@ -20,5 +22,7 @@ add_executable(micro_cc main.cpp
         bin_arm64.h
         optimization.cpp
         optimization.h
-#        test.cpp
+        memory/mspace.cpp
+        memory/mspace.h
+        #        test.cpp
 )

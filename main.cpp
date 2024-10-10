@@ -3,7 +3,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <unistd.h>
-#include "logger.h"
+#include "logger/logger.h"
 #include "lexer.h"
 #include "syntaxer.h"
 #include "mir.h"
@@ -82,7 +82,9 @@ int main(int argc, char **argv) {
     processParams(argc, argv);
     Token *tokens = buildTokens(sourceFileName);
     AstProgram *program = buildAst(tokens);
+    releaseLexerMemory();
     Mir *mir = generateMir(program);
+    releaseAstMemory();
     mir = optimize(mir);
     generateArm64Asm(mir, outputFileName);
     return 0;

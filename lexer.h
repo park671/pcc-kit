@@ -7,7 +7,7 @@
 
 #include "token.h"
 
-Token *buildTokens(const char *sourceFilePath);
-
+extern Token *buildTokens(const char *sourceFilePath);
+extern void releaseLexerMemory();
 
 #endif //MICRO_CC_LEXER_H
