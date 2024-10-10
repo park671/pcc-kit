@@ -33,12 +33,17 @@ static void version() {
 static void usage(int exitcode) {
     version();
     fprintf(exitcode ? stderr : stdout,
-            "Usage: pcc [-S|p|O|h] <file>\n\n"
+            "Usage: pcc -[options] <file>\n\n"
             "\n"
-            "  -S                Stop before assembly (default)\n"
-            "  -o filename       Output to the specified file\n"
-            "  -O<number>        Does nothing at this moment\n"
-            "  -h                print this help\n");
+            "\t-o <filename>        \toutput file path\n"
+            "\t-O<number>           \toptimization level\n"
+            "\t-S                   \tcompile to assembly (no binary)\n"
+            "\t-a <target-arch>     \ttarget cpu inst (arm64, x86_64)\n"
+            "\t-p <target-platform> \ttarget os platform (linux, macos, windows, bare)\n"
+            "\t-shared              \twrapper as shared lib\n"
+            "\t-fpic                \tposition independent code\n"
+            "\t-h                   \tprint this help\n"
+    );
     exit(exitcode);
 }
 
