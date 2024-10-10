@@ -34,15 +34,15 @@ static void usage(int exitcode) {
     version();
     fprintf(exitcode ? stderr : stdout,
             "Usage: pcc -[options] <file>\n\n"
+            "  -o <filename>        \toutput file path\n"
+            "  -O<number>           \toptimization level\n"
+            "  -S                   \tcompile to assembly (no binary)\n"
+            "  -a <target-arch>     \ttarget cpu inst (arm64, x86_64)\n"
+            "  -p <target-platform> \ttarget os platform (linux, macos, windows, bare)\n"
+            "  -shared              \twrapper as shared lib\n"
+            "  -fpic                \tposition independent code\n"
+            "  -h                   \tprint this help\n"
             "\n"
-            "\t-o <filename>        \toutput file path\n"
-            "\t-O<number>           \toptimization level\n"
-            "\t-S                   \tcompile to assembly (no binary)\n"
-            "\t-a <target-arch>     \ttarget cpu inst (arm64, x86_64)\n"
-            "\t-p <target-platform> \ttarget os platform (linux, macos, windows, bare)\n"
-            "\t-shared              \twrapper as shared lib\n"
-            "\t-fpic                \tposition independent code\n"
-            "\t-h                   \tprint this help\n"
     );
     exit(exitcode);
 }
