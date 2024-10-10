@@ -2,8 +2,8 @@
 // Created by Park Yu on 2024/9/11.
 //
 
-#ifndef MICRO_CC_TOKEN_H
-#define MICRO_CC_TOKEN_H
+#ifndef PCC_CC_TOKEN_H
+#define PCC_CC_TOKEN_H
 
 enum TokenType {
     TOKEN_HEAD,
@@ -26,4 +26,4 @@ struct Token {
 
 char *getTokenTypeName(TokenType tokenType);
 
-#endif //MICRO_CC_TOKEN_H
+#endif //PCC_CC_TOKEN_H

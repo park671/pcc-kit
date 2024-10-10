@@ -47,6 +47,12 @@ file(GLOB_RECURSE GENERATOR_SRC
         "generator/*.cpp"
 )
 
+file(GLOB_RECURSE WRAPPER_SRC
+        "wrapper/*.cc"
+        "wrapper/*.c"
+        "wrapper/*.cpp"
+)
+
 add_executable(pcc
         main.cpp
         ${LOGGER_SRC}
@@ -54,4 +60,5 @@ add_executable(pcc
         ${FILE_SRC}
         ${COMPILER_SRC}
         ${GENERATOR_SRC}
+        ${WRAPPER_SRC}
 )

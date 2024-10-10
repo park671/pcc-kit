@@ -200,5 +200,5 @@ cmake build
 just read the "main"
 here is a demo:
 ```
-micro_cc -S -O0 -o demo_add.s /path_to_your_source/demo_add.c
+pcc -S -O0 -o demo_add.s /path_to_your_source/demo_add.c
 ```

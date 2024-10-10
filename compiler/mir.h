@@ -2,8 +2,8 @@
 // Created by Park Yu on 2024/9/23.
 //
 
-#ifndef MICRO_CC_MIR_H
-#define MICRO_CC_MIR_H
+#ifndef PCC_CC_MIR_H
+#define PCC_CC_MIR_H
 
 #include "ast.h"
 

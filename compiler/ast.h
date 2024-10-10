@@ -2,8 +2,8 @@
 // Created by Park Yu on 2024/9/11.
 //
 
-#ifndef MICRO_CC_AST_H
-#define MICRO_CC_AST_H
+#ifndef PCC_CC_AST_H
+#define PCC_CC_AST_H
 
 enum PrimitiveType {
     TYPE_UNKNOWN,
@@ -336,4 +336,4 @@ enum AstNodeType {
     NODE_TYPE
 };
 
-#endif //MICRO_CC_AST_H
+#endif //PCC_CC_AST_H

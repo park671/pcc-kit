@@ -2,8 +2,8 @@
 // Created by Park Yu on 2024/9/23.
 //
 
-#ifndef MICRO_CC_ASM_ARM64_H
-#define MICRO_CC_ASM_ARM64_H
+#ifndef PCC_CC_ASM_ARM64_H
+#define PCC_CC_ASM_ARM64_H
 
 #include "../compiler/mir.h"
 
@@ -25,4 +25,4 @@ struct StackVar {
 
 void generateArm64Asm(Mir *mir, const char *assemblyFileName);
 
-#endif //MICRO_CC_ASM_ARM64_H
+#endif //PCC_CC_ASM_ARM64_H
