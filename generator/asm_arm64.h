@@ -23,6 +23,13 @@ struct StackVar {
     int stackOffset;
 };
 
+struct Section {
+    SectionType sectionType;
+    union {
+
+    };
+};
+
 void generateArm64Asm(Mir *mir, const char *assemblyFileName);
 
 #endif //PCC_CC_ASM_ARM64_H

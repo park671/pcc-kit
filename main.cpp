@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include "logger/logger.h"
 #include "compiler/lexer.h"
 #include "compiler/syntaxer.h"
@@ -8,11 +9,18 @@
 #include "compiler/optimization.h"
 #include "generator/asm_arm64.h"
 #include "config.h"
+#include "bin_arm64.h"
 
 #define MAIN_TAG "main"
 
-static char *sourceFileName;
-static char *outputFileName;
+static const char *outputFileName = NULL;
+static const char *sourceFileName = NULL;
+static const char *targetArch = NULL;
+static const char *targetPlatform = NULL;
+static int optimizationLevel = -1;
+static int outputAssembly = 0;
+static int sharedLib = 0;
+static int fpic = 0;
 
 static void version() {
     printf("\n");
@@ -49,36 +57,65 @@ static void usage(int exitcode) {
 
 void processParams(int argc, char **argv) {
     for (;;) {
-        int opt = getopt(argc, argv, "O:S:o:h:v");
+        int opt = getopt(argc, argv, "O:o:a:p:s:f:Shv");
         if (opt == -1)
             break;
         switch (opt) {
             case 'O':
-                logd(MAIN_TAG, "[+] optimize level=%s", optarg);
+                optimizationLevel = atoi(optarg);
+                logd(MAIN_TAG, "[+] optimize level=%d", optimizationLevel);
                 break;
             case 'S':
                 logd(MAIN_TAG, "[+] output assembly");
+                outputAssembly = 1;
                 break;
             case 'o':
                 logd(MAIN_TAG, "[+] output file=%s", optarg);
                 outputFileName = optarg;
                 break;
+            case 'a':
+                logd(MAIN_TAG, "[+] target architecture=%s", optarg);
+                targetArch = optarg;
+                break;
+            case 'p':
+                logd(MAIN_TAG, "[+] target platform=%s", optarg);
+                targetPlatform = optarg;
+                break;
+            case 'f':
+                if (optarg != nullptr && strcmp("pic", optarg) == 0) {
+                    logd(MAIN_TAG, "[+] position independent code (fPIC)");
+                    fpic = 1;
+                }
+                break;
             case 'h':
                 logd(MAIN_TAG, "[+] show help");
                 usage(0);
+                break;
             case 'v':
                 version();
                 exit(0);
+                break;
+            case 's':
+                if (optarg != nullptr && strcmp("hared", optarg) == 0) {
+                    logd(MAIN_TAG, "[+] generate shared library");
+                    sharedLib = 1;
+                }
                 break;
             default:
                 loge(MAIN_TAG, "[-] unknown opt=%d, arg=%s", opt, optarg);
                 usage(1);
         }
     }
-    if (optind != argc - 1)
+
+    // Ensure that the input source file is provided
+    if (optind != argc - 1) {
         usage(1);
+    }
+
     sourceFileName = argv[optind];
-    logd(MAIN_TAG, "[+] input file name=%s\n", sourceFileName);
+    logd(MAIN_TAG, "[+] input file name=%s", sourceFileName);
+
+    // Further processing logic (such as handling default behaviors or flags) goes here
 }
 
 int main(int argc, char **argv) {
@@ -90,5 +127,6 @@ int main(int argc, char **argv) {
     releaseAstMemory();
     mir = optimize(mir);
     generateArm64Asm(mir, outputFileName);
+    generateArm64Binary();
     return 0;
 }

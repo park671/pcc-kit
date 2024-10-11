@@ -9,38 +9,47 @@
 
 static const char *FILE_TAG = "file";
 
-FILE *assemblyFile = nullptr;
+FILE *targetFile = nullptr;
 
 void openFile(const char *fileName) {
-    if (assemblyFile != nullptr) {
+    if (targetFile != nullptr) {
         loge(FILE_TAG, "current file is not closed.");
         return;
     }
-    FILE *file = fopen(fileName, "w+");
+    FILE *file = fopen(fileName, "w+b");
     if (file == nullptr) {
         perror("Failed to open file");
-        assemblyFile = nullptr;
+        targetFile = nullptr;
     }
-    assemblyFile = file;
+    targetFile = file;
 }
 
 void writeFile(const char *format, ...) {
-    if (assemblyFile == nullptr) {
+    if (targetFile == nullptr) {
         loge(FILE_TAG, "internal error: no file is open.\n");
         return;
     }
     va_list args;
     va_start(args, format);
-    vfprintf(assemblyFile, format, args);
+    vfprintf(targetFile, format, args);
     va_end(args);
-    fflush(assemblyFile);
+    fflush(targetFile);
 }
 
-void closeFile() {
-    if (assemblyFile == nullptr) {
+void writeFileB(const void *ptr, size_t sizeInByte) {
+    if (targetFile == nullptr) {
         loge(FILE_TAG, "internal error: no file is open.\n");
         return;
     }
-    fclose(assemblyFile);
-    assemblyFile = nullptr;
+    fwrite(ptr, 1, sizeInByte, targetFile);
+    fflush(targetFile);
+}
+
+void closeFile() {
+    if (targetFile == nullptr) {
+        loge(FILE_TAG, "internal error: no file is open.\n");
+        return;
+    }
+    fclose(targetFile);
+    targetFile = nullptr;
 }

@@ -7,6 +7,7 @@
 #include "asm_arm64.h"
 #include "logger.h"
 #include "file.h"
+#include "register_arm64.h"
 
 using namespace std;
 
@@ -38,16 +39,6 @@ int alignStackSize(int reqSize) {
 }
 
 static vector<StackVar *> currentStackVarList;
-static vector<char *> methodList;
-
-static bool isMethodExist(const char *methodName) {
-    for (int i = 0; i < methodList.size(); i++) {
-        if (strcmp(methodList[i], methodName) == 0) {
-            return true;
-        }
-    }
-    return false;
-}
 
 const char *getSection(SectionType sectionType) {
     switch (sectionType) {
@@ -61,39 +52,6 @@ const char *getSection(SectionType sectionType) {
             return ".rodata";
     }
 }
-
-#define COMMON_REG_SIZE 15
-
-const char *commonRegsName[COMMON_REG_SIZE] = {
-        //0  - 7
-        "0",
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6",
-        "7",
-        //9  - 15
-        "9",
-        "10",
-        "11",
-        "12",
-        "13",
-        "14",
-        "15",
-//        //19 - 28
-//        "19",
-//        "20",
-//        "21",
-//        "22",
-//        "23",
-//        "24",
-//        "25",
-//        "26",
-//        "27",
-//        "28",
-};
 
 static vector<int> regInUseList;
 
@@ -109,31 +67,11 @@ char *getCommonRegName(int regIndex, int size) {
     } else {
         regWidth = 'w';
     }
-    snprintf(regName, 4, "%c%s", regWidth, commonRegsName[regIndex]);
+    snprintf(regName, 4, "%c%s", regWidth, commonRegisterName[regIndex]);
     return regName;
 }
 
 static char *commonRegsVarName[COMMON_REG_SIZE];
-
-//syscall num
-const char *sysCallReg = "x8";
-
-//jump method pointer, save the method pointer to this regs
-//eg: BLR x16
-const char *ipcRegs[] = {
-        "x16",
-        "x17"
-};
-
-//in some os, this reg is used for thread local data pointer
-const char *platformReg = "x18";
-
-//save current method sp
-const char *framePointReg = "x29";
-
-//in method call stack, this reg save the "caller method"'s loc,
-//return instruction use x30 to jump back to the caller.
-const char *linkReg = "x30";
 
 /**
  *
