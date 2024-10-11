@@ -63,4 +63,6 @@ add_executable(pcc
         ${GENERATOR_SRC}
         ${WRAPPER_SRC}
         generator/register_arm64.h
+        generator/assembler.cpp
+        generator/assembler.h
 )

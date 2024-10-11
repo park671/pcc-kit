@@ -7,16 +7,15 @@
 #include "compiler/syntaxer.h"
 #include "compiler/mir.h"
 #include "compiler/optimization.h"
-#include "generator/asm_arm64.h"
 #include "config.h"
-#include "bin_arm64.h"
+#include "assembler.h"
 
 #define MAIN_TAG "main"
 
 static const char *outputFileName = NULL;
 static const char *sourceFileName = NULL;
-static const char *targetArch = NULL;
-static const char *targetPlatform = NULL;
+static Arch targetArch = ARCH_ARM64;
+static Platform targetPlatform = PLATFORM_LINUX;
 static int optimizationLevel = -1;
 static int outputAssembly = 0;
 static int sharedLib = 0;
@@ -75,11 +74,25 @@ void processParams(int argc, char **argv) {
                 break;
             case 'a':
                 logd(MAIN_TAG, "[+] target architecture=%s", optarg);
-                targetArch = optarg;
+                targetArch = ARCH_UNKNOWN;
+                if (strcmp(optarg, "arm64") == 0) {
+                    targetArch = ARCH_ARM64;
+                } else if (strcmp(optarg, "x86_64") == 0) {
+                    targetArch = ARCH_X86_64;
+                }
                 break;
             case 'p':
                 logd(MAIN_TAG, "[+] target platform=%s", optarg);
-                targetPlatform = optarg;
+                targetPlatform = PLATFORM_UNKNOWN;
+                if (strcmp(optarg, "linux") == 0) {
+                    targetPlatform = PLATFORM_LINUX;
+                } else if (strcmp(optarg, "macos") == 0) {
+                    targetPlatform = PLATFORM_MACOS;
+                } else if (strcmp(optarg, "windows") == 0) {
+                    targetPlatform = PLATFORM_WINDOWS;
+                } else if (strcmp(optarg, "bare") == 0) {
+                    targetPlatform = PLATFORM_BARE;
+                }
                 break;
             case 'f':
                 if (optarg != nullptr && strcmp("pic", optarg) == 0) {
@@ -106,6 +119,15 @@ void processParams(int argc, char **argv) {
                 usage(1);
         }
     }
+    if (targetArch == ARCH_UNKNOWN) {
+        loge(MAIN_TAG, "unknown arch");
+        usage(1);
+    }
+
+    if (targetPlatform == PLATFORM_UNKNOWN) {
+        loge(MAIN_TAG, "unknown platform");
+        usage(1);
+    }
 
     // Ensure that the input source file is provided
     if (optind != argc - 1) {
@@ -125,8 +147,7 @@ int main(int argc, char **argv) {
     releaseLexerMemory();
     Mir *mir = generateMir(program);
     releaseAstMemory();
-    mir = optimize(mir);
-    generateArm64Asm(mir, outputFileName);
-    generateArm64Binary();
+    mir = optimize(mir, optimizationLevel);
+    generateTargetFile(mir, targetArch, targetPlatform, outputAssembly, outputFileName);
     return 0;
 }

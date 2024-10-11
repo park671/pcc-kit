@@ -8,6 +8,6 @@
 #include <stdint.h>
 #include "mir.h"
 
-Mir *optimize(Mir *mir);
+Mir *optimize(Mir *mir, int optimizationLevel);
 
 #endif //PCC_CC_OPTIMIZATION_H

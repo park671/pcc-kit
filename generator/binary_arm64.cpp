@@ -2,7 +2,7 @@
 // Created by Park Yu on 2024/9/23.
 //
 
-#include "bin_arm64.h"
+#include "binary_arm64.h"
 #include "elf.h"
 #include "file.h"
 #include "logger.h"
@@ -22,6 +22,8 @@ enum Arm64Inst {
     ldp,
 
     mov,
+
+    ret
 };
 
 typedef uint32_t Operand;
@@ -158,7 +160,7 @@ void generateOp2(Arm64Inst inst, bool halfWidth, Operand dest, Operand src, bool
     emitInst(opcode);
 }
 
-void generateArm64Binary() {
+void generateArm64Binary(const char *assemblyFileName) {
 
 
 //    writeElf64();

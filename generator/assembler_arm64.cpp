@@ -4,18 +4,20 @@
 
 #include <stdio.h>
 #include <vector>
-#include "asm_arm64.h"
+#include "assembler_arm64.h"
 #include "logger.h"
 #include "file.h"
 #include "register_arm64.h"
 
 using namespace std;
 
-#define ASM_TAG "arm64_asm"
+#define ARM64_TAG "arm64_asm"
 
 #define ARM_STACK_ALIGN 16
 #define ARM_BLOCK_32_ALIGN 4
 #define ARM_BLOCK_64_ALIGN 8
+
+static int outputAssembly = 0;
 
 int alignBlockSize(int reqSize) {
     if (reqSize > ARM_BLOCK_32_ALIGN) {
@@ -278,7 +280,7 @@ int getVarSizeFromStack(const char *varName) {
             break;
         }
     }
-    loge(ASM_TAG, "unknown var size %s", varName);
+    loge(ARM64_TAG, "unknown var size %s", varName);
     return -1;
 }
 
@@ -349,7 +351,7 @@ int getMirOperandSizeInByte(MirOperandType mirOperandType) {
         case OPERAND_RET:
         case OPERAND_VOID:
         default: {
-            loge(ASM_TAG, "internal error: invalid type for sizing %d", mirOperandType);
+            loge(ARM64_TAG, "internal error: invalid type for sizing %d", mirOperandType);
             return 0;
         }
     }
@@ -362,14 +364,14 @@ int getMirOperandSizeInByte(MirOperandType mirOperandType) {
  */
 int loadVarIntoReg(MirCode *mirCode, MirOperand *mirOperand) {
     if (mirOperand->type != OPERAND_IDENTITY) {
-        loge(ASM_TAG, "internal error: get var but not identity type operand");
+        loge(ARM64_TAG, "internal error: get var but not identity type operand");
         return -1;
     }
     int fromRegIndex = isVarExistInCommonReg(mirOperand->identity);
     if (fromRegIndex == -1) {
         int stackOffset = getVarFromStack(mirOperand->identity);
         if (stackOffset == -1) {
-            loge(ASM_TAG, "internal error: can not found var %s on stack", mirOperand->identity);
+            loge(ARM64_TAG, "internal error: can not found var %s on stack", mirOperand->identity);
             return -1;
         }
         fromRegIndex = allocEmptyReg(mirCode);
@@ -412,7 +414,7 @@ const char *convertMirOperandAsm(MirOperand *mirOperand) {
             snprintf(result, 21, "#%f", mirOperand->dataFloat64);
             return result;
         default: {
-            loge(ASM_TAG, "invalid operand for convert %d", mirOperand->type);
+            loge(ARM64_TAG, "invalid operand for convert %d", mirOperand->type);
             return "invalid";
         }
     }
@@ -439,7 +441,7 @@ void generateCodes(MirCode *mirCode) {
                 if (fromRegIndex == -1) {
                     int stackOffset = getVarFromStack(mirOperand->identity);
                     if (stackOffset == -1) {
-                        loge(ASM_TAG, "internal error: can not found var %s on stack", mirOperand->identity);
+                        loge(ARM64_TAG, "internal error: can not found var %s on stack", mirOperand->identity);
                     }
                     writeFile("\tldr\t%s, [sp, #%d]\n", distRegName, stackOffset);
                 } else {
@@ -585,7 +587,7 @@ void generateCodes(MirCode *mirCode) {
                     writeFile("\tdiv\t%s, %s, %s\n", dist, value1, value2);
                     break;
                 case OP_MOD:
-                    loge(ASM_TAG, "[-] not impl yet!");
+                    loge(ARM64_TAG, "[-] not impl yet!");
                     break;
                 case OP_ASSIGNMENT:
                     break;
@@ -777,7 +779,7 @@ void generateCodes(MirCode *mirCode) {
                 }
                 case CMP_UNKNOWN:
                 default: {
-                    loge(ASM_TAG, "unknown cmp op:%d", mirCmp->op);
+                    loge(ARM64_TAG, "unknown cmp op:%d", mirCmp->op);
                     break;
                 }
             }
@@ -797,7 +799,7 @@ void generateCodes(MirCode *mirCode) {
             break;
         }
         default: {
-            loge(ASM_TAG, "unknown MIR: %d", mirCode->mirType);
+            loge(ARM64_TAG, "unknown MIR: %d", mirCode->mirType);
         }
     }
 }
@@ -830,7 +832,7 @@ int computeMethodStackSize(MirMethod *mirMethod) {
                 }
                 if (!varFound) {
                     int size = getMirOperandSizeInByte(mirCode->mir3->distType);
-//                    logd(ASM_TAG, "[+] new var %s size %d", mirCode->mir3->distIdentity, size);
+//                    logd(ARM64_TAG, "[+] new var %s size %d", mirCode->mir3->distIdentity, size);
                     stackSizeInByte += alignBlockSize(size);
                     varList.push_back(mirCode->mir3->distIdentity);
                 }
@@ -847,7 +849,7 @@ int computeMethodStackSize(MirMethod *mirMethod) {
                 if (!varFound) {
                     int size = getMirOperandSizeInByte(mirCode->mir2->distType);
                     stackSizeInByte += alignBlockSize(size);
-//                    logd(ASM_TAG, "[+] new var %s size %d", mirCode->mir2->distIdentity, size);
+//                    logd(ARM64_TAG, "[+] new var %s size %d", mirCode->mir2->distIdentity, size);
                     varList.push_back(mirCode->mir2->distIdentity);
                 }
                 break;
@@ -883,9 +885,13 @@ void generateData(MirData *mirData) {
     //todo
 }
 
-void generateArm64Asm(Mir *mir, const char *assemblyFileName) {
-    logd(ASM_TAG, "assembly generation...");
-    openFile(assemblyFileName);
+void generateArm64Target(Mir *mir, int assembly, const char *outputFileName) {
+    logd(ARM64_TAG, "arm64 target generation...");
+
+    outputAssembly = assembly;
+    if (outputAssembly) {
+        openFile(outputFileName);
+    }
     //.text
     generateSection(SECTION_TEXT);
     MirMethod *mirMethod = mir->mirMethod;

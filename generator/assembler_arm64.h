@@ -30,6 +30,6 @@ struct Section {
     };
 };
 
-void generateArm64Asm(Mir *mir, const char *assemblyFileName);
+void generateArm64Target(Mir *mir, int outputAssembly, const char *outputFileName);
 
 #endif //PCC_CC_ASM_ARM64_H
