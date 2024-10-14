@@ -15,19 +15,16 @@ void generateTargetFile(
         const char *outputFileName) {
     logd(ASSEMBLER_TAG, "target generation...");
 
-    if (outputAssembly) {
-        if (outputFileName == nullptr) {
+    if (outputFileName == nullptr) {
+        if (outputAssembly) {
             outputFileName = "output.s";
+        } else {
+            outputFileName = "output.bin";
         }
-    } else {
-        generateArm64Target(mir, outputFileName);
-        generateArm64Binary();
     }
-
-
     switch (arch) {
         case ARCH_ARM64: {
-            generateArm64Target(mir, outputFileName);
+            generateArm64Target(mir, outputAssembly, outputFileName);
             break;
         }
         case ARCH_X86_64: {

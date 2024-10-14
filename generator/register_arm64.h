@@ -38,6 +38,7 @@ int X28 = 0x1C;
 int X29 = 0x1D;
 int X30 = 0x1E;
 int XZR = 0x1F;
+int SP = 0x1F;
 
 #define COMMON_REG_SIZE 15
 
