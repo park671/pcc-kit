@@ -492,19 +492,17 @@ void generateCodes(MirCode *mirCode) {
                     binaryOpStoreLoad(
                             INST_LDR,
                             greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
-                            distRegIndex,
+                            commonRegisterBinary[distRegIndex],
                             0,
                             SP,
                             stackOffset);
 
                 } else {
-                    const char *fromRegName = getCommonRegName(
-                            fromRegIndex,
-                            greaterRegisterWidth
-                    );
-                    binaryOp2(INST_MOV, greaterRegisterWidth == ARM_BLOCK_64_ALIGN, distRegIndex, fromRegIndex, false);
-
-                    free(((void *) fromRegName));
+                    binaryOp2(INST_MOV,
+                              greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
+                              commonRegisterBinary[distRegIndex],
+                              commonRegisterBinary[fromRegIndex],
+                              false);
                 }
             } else {
 
@@ -513,7 +511,7 @@ void generateCodes(MirCode *mirCode) {
                         //_last_ret must be x0
                         binaryOp2(INST_MOV,
                                   greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
-                                  distRegIndex,
+                                  commonRegisterBinary[distRegIndex],
                                   X0,
                                   false
                         );
@@ -524,7 +522,7 @@ void generateCodes(MirCode *mirCode) {
                     case OPERAND_INT32: {
                         binaryOp2(INST_MOV,
                                   greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
-                                  distRegIndex,
+                                  commonRegisterBinary[distRegIndex],
                                   mirOperand->dataInt32,
                                   true
                         );
@@ -538,7 +536,7 @@ void generateCodes(MirCode *mirCode) {
                         //todo this is wrong
                         binaryOp2(INST_MOV,
                                   greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
-                                  distRegIndex,
+                                  commonRegisterBinary[distRegIndex],
                                   mirOperand->dataFloat64,
                                   true
                         );
@@ -557,7 +555,7 @@ void generateCodes(MirCode *mirCode) {
             binaryOpStoreLoad(
                     INST_STR,
                     greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
-                    distRegIndex,
+                    commonRegisterBinary[distRegIndex],
                     0,
                     SP,
                     distStackOffset);
@@ -822,20 +820,27 @@ void generateCodes(MirCode *mirCode) {
             if (mirOperand == nullptr) {
                 //return void
                 binaryOp2(INST_MOV, 1, X0, XZR, false);
-
             } else {
                 //return value
                 if (mirOperand->type == OPERAND_IDENTITY) {
                     int valueRegIndex = loadVarIntoReg(mirCode, mirOperand);
                     int valueRegisterWidth = getOperandSize(mirOperand);
-                    binaryOp2(INST_MOV, valueRegisterWidth == ARM_BLOCK_64_ALIGN, X0, valueRegIndex, false);
+                    binaryOp2(INST_MOV,
+                              valueRegisterWidth == ARM_BLOCK_64_ALIGN,
+                              X0,
+                              commonRegisterBinary[valueRegIndex],
+                              false);
                 } else if (mirOperand->type == OPERAND_RET) {
                     //do nothing
                     //because we do not need "INST_MOV X0, X0"
                 } else {
                     //value1 must be reg!!!
                     const char *value = convertMirOperandAsm(mirOperand);
-                    binaryOp2(INST_MOV, 1, X0, convertMirOperandImmBinary(mirOperand), true);
+                    binaryOp2(INST_MOV,
+                              1,
+                              X0,
+                              convertMirOperandImmBinary(mirOperand),
+                              true);
                     free(((void *) value));
                 }
             }
