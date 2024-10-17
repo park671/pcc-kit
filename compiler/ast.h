@@ -200,6 +200,7 @@ struct AstStatementDefine {
 };
 
 struct AstStatementMethodCall {
+    PrimitiveType retType;
     AstIdentity *identity;
     //(
     AstObjectList *objectList;

@@ -108,6 +108,8 @@ struct MirOperand {
 
         float dataFloat32;
         double dataFloat64;
+
+        MirOperandType retType;
     };
 };
 

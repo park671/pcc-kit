@@ -37,6 +37,15 @@ inline static bool hasMethodDefine(char *name) {
     return false;
 }
 
+inline static AstMethodDefine *getMethodDefine(char *name) {
+    for (int i = 0; i < methodList.size(); i++) {
+        if (strcmp(methodList[i]->identity->name, name) == 0) {
+            return methodList[i];
+        }
+    }
+    return nullptr;
+}
+
 inline static void pushMethod(AstMethodDefine *astMethodDefine) {
     methodList.push_back(astMethodDefine);
     vector<AstIdentity *> *methodStack = new vector<AstIdentity *>();
@@ -265,6 +274,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 token = travelAst(token, astStatement->defineStatement->expression, NODE_EXPRESSION);
                 if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ";") != 0) {
                     loge(SYNTAX_TAG, "[-]error: need ;: %s", token->content);
+                    exit(1);
                 }
                 //consume ;
                 token = token->next;
@@ -288,8 +298,8 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                         token = travelAst(token, astStatement->methodCallStatement, NODE_STATEMENT_METHOD_CALL);
                     } else {
                         loge(SYNTAX_TAG, "[-]error: undefined method: %s", token->content);
+                        exit(1);
                     }
-
                 } else {
                     //assume this is expressions statement
                     astStatement->statementType = STATEMENT_EXPRESSION;
@@ -642,6 +652,15 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             astStatementMethodCall->identity = (AstIdentity *) pccMalloc(SYNTAX_TAG, sizeof(AstIdentity));
             astStatementMethodCall->identity->name = token->content;
             token = token->next;
+            //fill method call ret type
+            AstMethodDefine *methodDefine = getMethodDefine(astStatementMethodCall->identity->name);
+            if (methodDefine == nullptr) {
+                loge(SYNTAX_TAG, "can not found method define when call method:%s",
+                     astStatementMethodCall->identity->name);
+                exit(1);
+            }
+            astStatementMethodCall->retType = methodDefine->type->primitiveType;
+            //check next token
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, "(") != 0) {
                 loge(SYNTAX_TAG, "[-]error: method call need (: %s", token->content);
             }

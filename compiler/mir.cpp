@@ -207,7 +207,8 @@ MirOperandType convertAstType2MirType(PrimitiveType primitiveType) {
         }
         case TYPE_UNKNOWN:
         default: {
-            loge(MIR_TAG, "unknown type!");
+            loge(MIR_TAG, "unknown type:%d", primitiveType);
+            exit(1);
         }
     }
     return OPERAND_UNKNOWN;
@@ -219,7 +220,7 @@ static const char *convertOperand(MirOperand *mirOperand) {
         case OPERAND_IDENTITY:
             return mirOperand->identity;
         case OPERAND_RET:
-            return "[last INST_RET]";
+            return "[last ret]";
         case OPERAND_INT8:
             result = (char *) malloc(sizeof(char) * 21);
             snprintf(result, 21, "%d", mirOperand->dataInt8);
@@ -281,7 +282,7 @@ void printMirCode(MirCode *mirCode) {
             if (mirCmp->falseLabel->label != nullptr) {
                 falseLabel = mirCmp->falseLabel->label;
             }
-            logd(MIR_TAG, "INST_CMP: %s %s %s ? %s : %s",
+            logd(MIR_TAG, "cmp: %s %s %s ? %s : %s",
                  convertOperand(&mirCmp->value1),
                  convertBoolOpString(mirCmp->op),
                  convertOperand(&mirCmp->value2),
@@ -291,7 +292,7 @@ void printMirCode(MirCode *mirCode) {
             break;
         }
         case MIR_RET: {
-            logd(MIR_TAG, "INST_RET: %s", convertOperand(mirCode->mirRet->value));
+            logd(MIR_TAG, "ret: %s", convertOperand(mirCode->mirRet->value));
             break;
         }
         case MIR_CALL: {
@@ -474,6 +475,7 @@ void generateArithmeticFactor(AstArithmeticFactor *arithmeticFactor, MirOperand 
         case ARITHMETIC_METHOD_RET: {
             generateStatementMethodCall(arithmeticFactor->methodCall);
             mirOperand->type = OPERAND_RET;
+            mirOperand->retType = convertAstType2MirType(arithmeticFactor->methodCall->retType);
             break;
         }
         default: {
@@ -560,9 +562,9 @@ void generateExpressionAssignment(
     emitMirCode(mirCode);
 
     if (value != nullptr) {
-        //a = INST_B = xxx, this fromValue is the "INST_B", not "a"
+        //a = b = xxx, this fromValue is the "b", not "a"
         value->type = OPERAND_IDENTITY;
-        //so the "INST_B" is current fromValue name
+        //so the "b" is current fromValue name
         value->identity = expression->identity->name;
     }
 }

@@ -253,41 +253,59 @@ void binaryOp3(Arm64Inst inst, uint32_t is64Bit, Operand x, Operand a, Operand b
 }
 
 /**
- *
+ * need scale!!!
+ * 64bit offset/8
+ * 32bit offset/4
  * @param isSigned
  * @param size 00-8 01-16 10-32 11-64
  * @param dist
  * @param baseReg
  * @param offset
  */
-void ldrInteger(int isSigned, uint32_t size, Operand dist, Operand baseReg, uint64_t offset) {
-    if (size >= 2)
-        isSigned = 0;
-    if (!(offset & ~((uint32_t) 0xfff << size)))
-        emitInst(0x39400000 | dist | baseReg << 5 | offset << (10 - size) |
-                 (uint32_t) !!isSigned << 23 | size << 30); // ldr(*) x(dist),[x(baseReg),#(offset)]
-    else if (offset < 256 || -offset <= 256)
-        emitInst(0x38400000 | dist | baseReg << 5 | (offset & 511) << 12 |
-                 (uint32_t) !!isSigned << 23 | size << 30); // ldur(*) x(dist),[x(baseReg),#(offset)]
-    else {
-        binaryOp2(INST_MOV, 1, X30, offset, true); // use x30 for offset
-        emitInst(0x38206800 | dist | baseReg << 5 | (uint32_t) 30 << 16 |
-                 (uint32_t) (!!isSigned + 1) << 22 | size << 30); // ldr(*) x(dist),[x(baseReg),x30]
+void ldrInteger(uint32_t is64Bit, Operand dist, Operand baseReg, uint64_t offset) {
+    //do offset align check
+    if (is64Bit) {
+        if (offset % 8) {
+            loge(BIN_TAG, "ldr imm scaled: 64bit offset not 8byte align!");
+            exit(-1);
+        }
+    } else {
+        if (offset % 4) {
+            loge(BIN_TAG, "ldr imm scaled: 32bit offset not 4byte align!");
+            exit(-1);
+        }
     }
+    offset = is64Bit ? offset / 8 : offset / 4;
+    //ldr imm scaled
+    uint32_t opCode = 0xB9400000;
+    opCode |= is64Bit << 30;
+    opCode |= dist;
+    opCode |= baseReg << 5;
+    opCode |= offset << 10;
+    emitInst(opCode);
 }
 
-void strInteger(uint32_t size, Operand dist, Operand baseReg, uint64_t offset) {
-    if (!(offset & ~((uint32_t) 0xfff << size)))
-        emitInst(0x39000000 | dist | baseReg << 5 | offset << (10 - size) | size << 30);
-        // str(*) x(dist),[x(baseReg],#(offset)]
-    else if (offset < 256 || -offset <= 256)
-        emitInst(0x38000000 | dist | baseReg << 5 | (offset & 511) << 12 | size << 30);
-        // stur(*) x(dist),[x(baseReg],#(offset)]
-    else {
-        binaryOp2(INST_MOV, 1, X30, offset, true);  // use x30 for offset
-        emitInst(0x38206800 | dist | baseReg << 5 | (uint32_t) 30 << 16 | size << 30);
-        // str(*) x(dist),[x(baseReg),x30]
+void strInteger(uint32_t is64Bit, Operand dist, Operand baseReg, uint64_t offset) {
+    //do offset align check
+    if (is64Bit) {
+        if (offset % 8) {
+            loge(BIN_TAG, "str imm scaled: 64bit offset not 8byte align!");
+            exit(-1);
+        }
+    } else {
+        if (offset % 4) {
+            loge(BIN_TAG, "str imm scaled: 32bit offset not 4byte align!");
+            exit(-1);
+        }
     }
+    offset = is64Bit ? offset / 8 : offset / 4;
+    //str imm scaled
+    uint32_t opCode = 0xB9000000;
+    opCode |= is64Bit << 30;
+    opCode |= dist;
+    opCode |= baseReg << 5;
+    opCode |= offset << 10;
+    emitInst(opCode);
 }
 
 void ldpInteger(uint32_t is64Bit, Operand reg1, Operand reg2, Operand baseReg, int64_t offset) {
@@ -375,7 +393,6 @@ void binaryOpStoreLoad(Arm64Inst inst, uint32_t is64Bit, Operand reg1, Operand r
         }
     }
 
-    int size = is64Bit ? 0b11 : 0b10;
     if (inst == INST_LDP || inst == INST_STP) {
         //double reg
         if (inst == INST_LDP) {
@@ -386,9 +403,9 @@ void binaryOpStoreLoad(Arm64Inst inst, uint32_t is64Bit, Operand reg1, Operand r
     } else if (inst == INST_LDR || inst == INST_STR) {
         //single reg
         if (inst == INST_LDR) {
-            ldrInteger(1, size, reg1, baseReg, offset);
+            ldrInteger(is64Bit, reg1, baseReg, offset);
         } else if (inst == INST_STR) {
-            strInteger(size, reg1, baseReg, offset);
+            strInteger(is64Bit, reg1, baseReg, offset);
         }
     } else {
         loge(BIN_TAG, "unknown opsl inst:%d", inst);
