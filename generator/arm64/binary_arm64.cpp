@@ -44,6 +44,10 @@ struct InstList {
 static InstList *instListHead;
 static int instCount = 0;
 
+int getCurrentInstCount() {
+    return instCount;
+}
+
 void emitLabel(const char *label) {
     logd(BIN_TAG, "%s:", label);
     LabelList *labelList = (LabelList *) pccMalloc(BIN_TAG, sizeof(LabelList));
@@ -182,7 +186,7 @@ void binaryOp3(Arm64Inst inst, uint32_t is64Bit, Operand x, Operand a, Operand b
                 loge(BIN_TAG, "arm64 not support INST_MUL imm");
                 break;
             }
-            logd(BIN_TAG, "\tINST_MUL %s %s %s", revertRegisterNames[x], revertRegisterNames[a],
+            logd(BIN_TAG, "\tmul %s, %s, %s", revertRegisterNames[x], revertRegisterNames[a],
                  revertRegisterNames[b]);
             baseOp = 0x1b007c00 | is64Bit << 31;  // 32: 0x1b, 64位: 0x9b
             emitInst(baseOp | x | a << 5 | b << 16); // INST_MUL
@@ -190,12 +194,13 @@ void binaryOp3(Arm64Inst inst, uint32_t is64Bit, Operand x, Operand a, Operand b
         }
         case INST_ADD: {
             if (bImm) {
-                logd(BIN_TAG, "\tadd %s %s #%d", revertRegisterNames[x], revertRegisterNames[a], b);
+                logd(BIN_TAG, "\tadd %s, %s, #%d", revertRegisterNames[x], revertRegisterNames[a], b);
                 uint32_t imm12 = (b & 0xFFF);  // 12bit imm
                 baseOp = 0x11000000 | is64Bit << 31;  // 32: 0x11, 64位: 0x91
                 emitInst(baseOp | x | a << 5 | imm12 << 10);  // ADD x, a, #imm12
             } else {
-                logd(BIN_TAG, "\tadd %s %s %s", revertRegisterNames[x], revertRegisterNames[a], revertRegisterNames[b]);
+                logd(BIN_TAG, "\tadd %s, %s, %s", revertRegisterNames[x], revertRegisterNames[a],
+                     revertRegisterNames[b]);
                 baseOp = 0x0b000000 | is64Bit << 31;  // 32: 0x0b, 64位: 0x8b
                 emitInst(baseOp | x | a << 5 | b << 16);  // ADD x, a, INST_B
             }
@@ -203,12 +208,13 @@ void binaryOp3(Arm64Inst inst, uint32_t is64Bit, Operand x, Operand a, Operand b
         }
         case INST_SUB: {
             if (bImm) {
-                logd(BIN_TAG, "\tsub %s %s #%d", revertRegisterNames[x], revertRegisterNames[a], b);
+                logd(BIN_TAG, "\tsub %s, %s, #%d", revertRegisterNames[x], revertRegisterNames[a], b);
                 uint32_t imm12 = (b & 0xFFF);
                 baseOp = 0x51000000 | is64Bit << 31;  // 32: 0x51, 64位: 0xd1
                 emitInst(baseOp | x | a << 5 | imm12 << 10);  // SUB x, a, #imm12
             } else {
-                logd(BIN_TAG, "\tsub %s %s %s", revertRegisterNames[x], revertRegisterNames[a], revertRegisterNames[b]);
+                logd(BIN_TAG, "\tsub %s, %s, %s", revertRegisterNames[x], revertRegisterNames[a],
+                     revertRegisterNames[b]);
                 baseOp = 0x4b000000 | is64Bit << 31;  // 32: 0x4b, 64位: 0xcb
                 emitInst(baseOp | x | a << 5 | b << 16);  // SUB x, a, INST_B
             }
@@ -219,7 +225,7 @@ void binaryOp3(Arm64Inst inst, uint32_t is64Bit, Operand x, Operand a, Operand b
                 loge(BIN_TAG, "arm64 not support div imm");
                 break;
             }
-            logd(BIN_TAG, "\tsdiv %s %s %s", revertRegisterNames[x], revertRegisterNames[a], revertRegisterNames[b]);
+            logd(BIN_TAG, "\tsdiv %s, %s, %s", revertRegisterNames[x], revertRegisterNames[a], revertRegisterNames[b]);
             baseOp = 0x1ac00c00 | is64Bit << 31;  // 32位: 0x1a, 64位: 0x9a
             emitInst(baseOp | x | a << 5 | b << 16); // INST_SDIV
             break;
@@ -229,7 +235,7 @@ void binaryOp3(Arm64Inst inst, uint32_t is64Bit, Operand x, Operand a, Operand b
                 loge(BIN_TAG, "arm64 not support div imm (INST_MOD impl use div)");
                 break;
             }
-            logd(BIN_TAG, "\tINST_MOD %s %s %s", revertRegisterNames[x], revertRegisterNames[a],
+            logd(BIN_TAG, "\tmod %s, %s, %s", revertRegisterNames[x], revertRegisterNames[a],
                  revertRegisterNames[b]);
             baseOp = 0x1ac00c00 < is64Bit << 31;  // 32位: 0x1a, 64位: 0x9a
             emitInst(baseOp | 30 | a << 5 | b << 16); // INST_SDIV
@@ -374,21 +380,21 @@ void stpInteger(uint32_t is64Bit, Operand reg1, Operand reg2, Operand baseReg, i
 void binaryOpStoreLoad(Arm64Inst inst, uint32_t is64Bit, Operand reg1, Operand reg2, Operand baseReg, int32_t offset) {
     switch (inst) {
         case INST_LDP: {
-            logd(BIN_TAG, "\tldp %s %s [%s,#%d]", revertRegisterNames[reg1], revertRegisterNames[reg2],
+            logd(BIN_TAG, "\tldp %s, %s, [%s, #%d]", revertRegisterNames[reg1], revertRegisterNames[reg2],
                  revertRegisterNames[baseReg], offset);
             break;
         }
         case INST_STP: {
-            logd(BIN_TAG, "\tstp %s %s [%s,#%d]", revertRegisterNames[reg1], revertRegisterNames[reg2],
+            logd(BIN_TAG, "\tstp %s, %s, [%s, #%d]", revertRegisterNames[reg1], revertRegisterNames[reg2],
                  revertRegisterNames[baseReg], offset);
             break;
         }
         case INST_LDR: {
-            logd(BIN_TAG, "\tldr %s [%s,#%d]", revertRegisterNames[reg1], revertRegisterNames[baseReg], offset);
+            logd(BIN_TAG, "\tldr %s, [%s, #%d]", revertRegisterNames[reg1], revertRegisterNames[baseReg], offset);
             break;
         }
         case INST_STR: {
-            logd(BIN_TAG, "\tstr %s [%s,#%d]", revertRegisterNames[reg1], revertRegisterNames[baseReg], offset);
+            logd(BIN_TAG, "\tstr %s, [%s, #%d]", revertRegisterNames[reg1], revertRegisterNames[baseReg], offset);
             break;
         }
     }
@@ -492,11 +498,11 @@ void binaryOp2(Arm64Inst inst, uint32_t is64Bit, Operand dist, Operand src, bool
     switch (inst) {
         case INST_MOV: {
             if (srcImm) {
-                logd(BIN_TAG, "\tmov(imm) %s #%d", revertRegisterNames[dist], src);
+                logd(BIN_TAG, "\tmov %s, #%d", revertRegisterNames[dist], src);
                 //imm
                 movInteger(dist, src);
             } else {
-                logd(BIN_TAG, "\tmov(reg) %s %s", revertRegisterNames[dist], revertRegisterNames[src]);
+                logd(BIN_TAG, "\tmov %s, %s", revertRegisterNames[dist], revertRegisterNames[src]);
                 //move reg to reg
                 //arm64 do not have a inst "INST_MOV", use "orr" inst impl
                 movRegister(is64Bit, dist, src);
@@ -505,11 +511,11 @@ void binaryOp2(Arm64Inst inst, uint32_t is64Bit, Operand dist, Operand src, bool
         }
         case INST_CMP: {
             if (srcImm) {
-                logd(BIN_TAG, "\tcmp %s #%d", revertRegisterNames[dist], src);
+                logd(BIN_TAG, "\tcmp %s, #%d", revertRegisterNames[dist], src);
                 uint32_t imm = src;
                 cmpInteger(is64Bit, dist, imm);
             } else {
-                logd(BIN_TAG, "\tcmp %s %s", revertRegisterNames[dist], revertRegisterNames[src]);
+                logd(BIN_TAG, "\tcmp %s, %s", revertRegisterNames[dist], revertRegisterNames[src]);
                 cmpRegister(is64Bit, dist, src);
             }
             break;
@@ -623,4 +629,29 @@ void binaryOpRet(Arm64Inst inst) {
     logd(BIN_TAG, "\tret");
     Inst opcode = 0xd65f03c0;
     emitInst(opcode);
+}
+
+void binaryOpNop(Arm64Inst inst) {
+    if (inst != INST_NOP) {
+        loge(BIN_TAG, "unknown INST_RET inst:%d", inst);
+        return;
+    }
+    logd(BIN_TAG, "\tnop");
+    Inst opCode = 0xd503201f;
+    emitInst(opCode);
+}
+
+/**
+ *
+ * @param inst
+ * @param sysCallImm always "0" on linux aarch64
+ */
+void binaryOpSvc(Arm64Inst inst, uint32_t sysCallImm) {
+    if (inst != INST_SVC) {
+        loge(BIN_TAG, "unknown INST_RET inst:%d", inst);
+        return;
+    }
+    logd(BIN_TAG, "\tsvc #%d", sysCallImm);
+    Inst opCode = 0xD4000001;
+    emitInst(opCode | sysCallImm << 5);
 }

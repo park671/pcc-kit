@@ -9,6 +9,7 @@
 #include "file.h"
 #include "register_arm64.h"
 #include "binary_arm64.h"
+#include "linux_syscall.h"
 
 using namespace std;
 
@@ -350,7 +351,6 @@ void releaseStack(int stackSize) {
     binaryOpStoreLoad(INST_LDP, 1, X29, X30, SP, currentStackTop - 16);
 
     binaryOp3(INST_ADD, 1, SP, SP, currentStackTop, true);
-
 }
 
 void storeParamsToStack(MirMethodParam *param) {
@@ -1065,9 +1065,19 @@ void generateData(MirData *mirData) {
     //todo
 }
 
+void initProgramStart() {
+    emitLabel("_start");
+    binaryOp2(INST_MOV, 1, X29, 0, true);
+    binaryOp2(INST_MOV, 1, X30, 0, true);
+    binaryOpBranch(INST_BL, UNUSED, "main");
+    //keep the "main" ret value in X0
+    binaryOp2(INST_MOV, 1, X8, SYS_EXIT, true);
+    binaryOpSvc(INST_SVC, 0);
+}
+
 int generateArm64Target(Mir *mir) {
     logd(ARM64_TAG, "arm64 target generation...");
-    binaryOpBranch(INST_B, UNUSED, "main");
+    initProgramStart();
     //.text
     MirMethod *mirMethod = mir->mirMethod;
     while (mirMethod != nullptr) {

@@ -35,7 +35,11 @@ enum Arm64Inst {
 
     INST_MOV,
 
-    INST_RET
+    INST_RET,
+
+    INST_NOP,
+
+    INST_SVC,
 };
 
 enum BranchCondition {
@@ -53,11 +57,16 @@ enum BranchCondition {
     UNUSED = 0xFF,
 };
 
+enum SysCall {
+
+};
+
 struct InstBuffer {
     Inst *result;
     int size;
 };
 
+int getCurrentInstCount();
 void emitLabel(const char *label);
 void relocateBinary(int32_t baseAddr);
 InstBuffer *getEmittedInstBuffer();
@@ -86,5 +95,9 @@ void binaryOpBranch(Arm64Inst inst, BranchCondition branchCondition, const char 
  * INST_RET
  */
 void binaryOpRet(Arm64Inst inst);
+
+void binaryOpNop(Arm64Inst inst);
+
+void binaryOpSvc(Arm64Inst inst, uint32_t sysCallImm);
 
 #endif //PCC_CC_BIN_ARM64_H
