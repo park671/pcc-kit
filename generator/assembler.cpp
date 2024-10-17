@@ -43,7 +43,7 @@ void generateTargetFile(
 
                 int programEntry = currentOffset;
 
-                relocateBinary(programEntry);
+                relocateBinary(0);
                 InstBuffer *instBuffer = getEmittedInstBuffer();
                 Elf64_Phdr *programHeader = createProgramHeader(PT_LOAD,
                                                                 PF_R | PF_X,

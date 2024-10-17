@@ -126,7 +126,7 @@ void relocateBinary(int32_t baseAddr) {
                     p->inst = realBinaryOpBranch(
                             p->branchRelocateInfo.inst,
                             p->branchRelocateInfo.branchCondition,
-                            baseAddr + (labelIndex * 4)
+                            baseAddr + ((labelIndex - p->index) * 4)
                     );
                     p->needRelocation = false;
                     break;
@@ -327,7 +327,8 @@ void stpInteger(uint32_t is64Bit, Operand reg1, Operand reg2, Operand baseReg, i
     int64_t scaledOffset = offset / dataSize;
     if (scaledOffset >= -64 && scaledOffset <= 63) {
         // 生成指令
-        uint32_t opcode = (0x29000000 | (is64Bit << 31)) | reg1 | (baseReg << 5) | (reg2 << 10) | ((scaledOffset & 0x7F) << 15);
+        uint32_t opcode =
+                (0x29000000 | (is64Bit << 31)) | reg1 | (baseReg << 5) | (reg2 << 10) | ((scaledOffset & 0x7F) << 15);
         emitInst(opcode);
         // 对应于指令：stp [x(baseReg), #(offset)], reg1, reg2
     } else {
@@ -342,7 +343,6 @@ void stpInteger(uint32_t is64Bit, Operand reg1, Operand reg2, Operand baseReg, i
         // 对应于指令：stp [x(tempReg)], reg1, reg2
     }
 }
-
 
 
 /**
@@ -475,11 +475,11 @@ void binaryOp2(Arm64Inst inst, uint32_t is64Bit, Operand dist, Operand src, bool
     switch (inst) {
         case INST_MOV: {
             if (srcImm) {
-                logd(BIN_TAG, "mov(imm) %s #%d", revertRegisterNames[dist], src);
+                logd(BIN_TAG, "\tmov(imm) %s #%d", revertRegisterNames[dist], src);
                 //imm
                 movInteger(dist, src);
             } else {
-                logd(BIN_TAG, "mov(reg) %s %s", revertRegisterNames[dist], revertRegisterNames[src]);
+                logd(BIN_TAG, "\tmov(reg) %s %s", revertRegisterNames[dist], revertRegisterNames[src]);
                 //move reg to reg
                 //arm64 do not have a inst "INST_MOV", use "orr" inst impl
                 movRegister(is64Bit, dist, src);
