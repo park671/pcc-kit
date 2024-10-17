@@ -81,7 +81,7 @@ static const char *commonRegsVarName[COMMON_REG_SIZE];
  * @param varName
  * @return offset in common regs array or -1 not found.
  */
-int isVarExistInCommonReg(char *varName) {
+int isVarExistInCommonReg(const char *varName) {
     for (int i = 0; i < COMMON_REG_SIZE; i++) {
         if (commonRegsVarName[i] != nullptr && strcmp(commonRegsVarName[i], varName) == 0) {
             return i;
@@ -90,7 +90,7 @@ int isVarExistInCommonReg(char *varName) {
     return -1;
 }
 
-bool isOperandEqualVarName(MirOperand *mirOperand, char *varName) {
+bool isOperandEqualVarName(MirOperand *mirOperand, const char *varName) {
     if (mirOperand == nullptr) {
         return false;
     }
@@ -102,7 +102,7 @@ bool isOperandEqualVarName(MirOperand *mirOperand, char *varName) {
     return false;
 }
 
-bool isMirCodeUseVar(MirCode *mirCode, char *varName) {
+bool isMirCodeUseVar(MirCode *mirCode, const char *varName) {
     switch (mirCode->mirType) {
         case MIR_2: {
             Mir2 *mir2 = mirCode->mir2;
@@ -167,7 +167,7 @@ bool isMirCodeUseVar(MirCode *mirCode, char *varName) {
     return false;
 }
 
-int leastRecentlyUseLine(MirCode *mirCode, char *varName) {
+int leastRecentlyUseLine(MirCode *mirCode, const char *varName) {
     while (mirCode != nullptr && varName != nullptr) {
         if (isMirCodeUseVar(mirCode, varName)) {
             return mirCode->codeLine;
@@ -1053,7 +1053,7 @@ void generateText(MirMethod *mirMethod) {
         code = code->nextCode;
     }
     releaseStack(methodStackSize);
-    binaryOpRet(_last_ret);
+    binaryOpRet(INST_RET);
 }
 
 void generateData(MirData *mirData) {
