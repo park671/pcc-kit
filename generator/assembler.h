@@ -32,7 +32,8 @@ extern void generateTargetFile(
         Mir *mir,
         Arch arch,
         Platform platform,
-        int assembly,
-        const char *targetFileName);
+        int outputAssembly,
+        int sharedLibrary,
+        const char *outputFileName);
 
 #endif //PCC_ASSEMBLER_H

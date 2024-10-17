@@ -5,7 +5,7 @@
 #ifndef PCC_CC_ASM_ARM64_H
 #define PCC_CC_ASM_ARM64_H
 
-#include "../compiler/mir.h"
+#include "mir.h"
 #include "assembler.h"
 
 //arm64 need 4byte alignment
@@ -24,13 +24,14 @@ struct StackVar {
     int stackOffset;
 };
 
-struct Section {
-    SectionType sectionType;
-    union {
-
-    };
-};
-
-void generateArm64Target(Mir *mir, int outputAssembly, Platform platform, const char *outputFileName);
+/**
+ *
+ * @param mir
+ * @param outputAssembly
+ * @param platform
+ * @param outputFileName
+ * @return section count
+ */
+int generateArm64Target(Mir *mir);
 
 #endif //PCC_CC_ASM_ARM64_H

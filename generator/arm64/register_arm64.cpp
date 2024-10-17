@@ -1,9 +1,7 @@
 //
-// Created by Park Yu on 2024/10/11.
+// Created by Park Yu on 2024/10/15.
 //
-
-#ifndef PCC_REGISTER_ARM64_H
-#define PCC_REGISTER_ARM64_H
+#include "register_arm64.h"
 
 // 64-bit X registers
 int X0 = 0x00;
@@ -40,8 +38,6 @@ int X30 = 0x1E;
 int XZR = 0x1F;
 int SP = 0x1F;
 
-#define COMMON_REG_SIZE 15
-
 const int commonRegisterBinary[COMMON_REG_SIZE] = {
         //0  - 7
         X0,
@@ -62,9 +58,6 @@ const int commonRegisterBinary[COMMON_REG_SIZE] = {
         X15,
 };
 
-/**
- * assembly fields
- */
 const char *commonRegisterName[COMMON_REG_SIZE] = {
         //0  - 7
         "0",
@@ -85,25 +78,15 @@ const char *commonRegisterName[COMMON_REG_SIZE] = {
         "15",
 };
 
-//syscall num
-const char *sysCallReg = "x8";
-
-//jump method pointer, save the method pointer to this regs
-//eg: BLR x16
-const char *ipcRegs[] = {
-        "x16",
-        "x17"
+const char *revertRegisterNames[] = {
+        "x0",  "x1",  "x2",  "x3",  "x4",  "x5",  "x6",  "x7",
+        "x8",  "x9",  "x10", "x11", "x12", "x13", "x14", "x15",
+        "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23",
+        "x24", "x25", "x26", "x27", "x28", "x29", "x30", "sp"  // xzr和sp同值，使用sp
 };
 
-//in some os, this reg is used for thread local data pointer
+const char *sysCallReg = "x8";
+const char *ipcRegs[] = {"x16", "x17"};
 const char *platformReg = "x18";
-
-//save current method sp
 const char *framePointReg = "x29";
-
-//in method call stack, this reg save the "caller method"'s loc,
-//return instruction use x30 to jump back to the caller.
 const char *linkReg = "x30";
-
-
-#endif //PCC_REGISTER_ARM64_H

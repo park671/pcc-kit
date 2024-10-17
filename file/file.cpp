@@ -9,24 +9,25 @@
 
 static const char *FILE_TAG = "file";
 
-FILE *targetFile = nullptr;
+static FILE *targetFile = nullptr;
 
 void openFile(const char *fileName) {
     if (targetFile != nullptr) {
         loge(FILE_TAG, "current file is not closed.");
         return;
     }
-    FILE *file = fopen(fileName, "w+b");
+    FILE *file = fopen(fileName, "w+INST_B");
     if (file == nullptr) {
-        perror("Failed to open file");
+        loge(FILE_TAG, "Failed to open file");
         targetFile = nullptr;
+        return;
     }
     targetFile = file;
 }
 
 void writeFile(const char *format, ...) {
     if (targetFile == nullptr) {
-        loge(FILE_TAG, "internal error: no file is open.\n");
+        loge(FILE_TAG, "internal error: no file is open.(text)\n");
         return;
     }
     va_list args;
@@ -38,7 +39,7 @@ void writeFile(const char *format, ...) {
 
 void writeFileB(const void *ptr, size_t sizeInByte) {
     if (targetFile == nullptr) {
-        loge(FILE_TAG, "internal error: no file is open.\n");
+        loge(FILE_TAG, "internal error: no file is open.(binary)\n");
         return;
     }
     fwrite(ptr, 1, sizeInByte, targetFile);
@@ -47,7 +48,7 @@ void writeFileB(const void *ptr, size_t sizeInByte) {
 
 void closeFile() {
     if (targetFile == nullptr) {
-        loge(FILE_TAG, "internal error: no file is open.\n");
+        loge(FILE_TAG, "internal error: no file is open, can't close.\n");
         return;
     }
     fclose(targetFile);

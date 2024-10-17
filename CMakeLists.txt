@@ -46,6 +46,10 @@ file(GLOB_RECURSE GENERATOR_SRC
         "generator/*.cc"
         "generator/*.c"
         "generator/*.cpp"
+
+        "generator/arm64/*.cc"
+        "generator/arm64/*.c"
+        "generator/arm64/*.cpp"
 )
 
 file(GLOB_RECURSE WRAPPER_SRC
@@ -62,7 +66,8 @@ add_executable(pcc
         ${COMPILER_SRC}
         ${GENERATOR_SRC}
         ${WRAPPER_SRC}
-        generator/register_arm64.h
+        generator/arm64/register_arm64.h
         generator/assembler.cpp
         generator/assembler.h
+        generator/arm64/register_arm64.cpp
 )

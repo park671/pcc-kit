@@ -219,7 +219,7 @@ static const char *convertOperand(MirOperand *mirOperand) {
         case OPERAND_IDENTITY:
             return mirOperand->identity;
         case OPERAND_RET:
-            return "[last ret]";
+            return "[last INST_RET]";
         case OPERAND_INT8:
             result = (char *) malloc(sizeof(char) * 21);
             snprintf(result, 21, "%d", mirOperand->dataInt8);
@@ -281,7 +281,7 @@ void printMirCode(MirCode *mirCode) {
             if (mirCmp->falseLabel->label != nullptr) {
                 falseLabel = mirCmp->falseLabel->label;
             }
-            logd(MIR_TAG, "cmp: %s %s %s ? %s : %s",
+            logd(MIR_TAG, "INST_CMP: %s %s %s ? %s : %s",
                  convertOperand(&mirCmp->value1),
                  convertBoolOpString(mirCmp->op),
                  convertOperand(&mirCmp->value2),
@@ -291,7 +291,7 @@ void printMirCode(MirCode *mirCode) {
             break;
         }
         case MIR_RET: {
-            logd(MIR_TAG, "ret: %s", convertOperand(mirCode->mirRet->value));
+            logd(MIR_TAG, "INST_RET: %s", convertOperand(mirCode->mirRet->value));
             break;
         }
         case MIR_CALL: {
@@ -560,9 +560,9 @@ void generateExpressionAssignment(
     emitMirCode(mirCode);
 
     if (value != nullptr) {
-        //a = b = xxx, this fromValue is the "b", not "a"
+        //a = INST_B = xxx, this fromValue is the "INST_B", not "a"
         value->type = OPERAND_IDENTITY;
-        //so the "b" is current fromValue name
+        //so the "INST_B" is current fromValue name
         value->identity = expression->identity->name;
     }
 }

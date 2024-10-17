@@ -229,7 +229,7 @@ int allocParamReg(int paramIndex) {
 }
 
 void generateSection(SectionType sectionType) {
-    writeFile(".section %s\n", getSection(sectionType));
+
 }
 
 int currentStackTop = 0;
@@ -239,13 +239,13 @@ void allocStack(int stackSize) {
     currentStackTop = alignStackSize(stackSize);
     //save x29 & x30
     currentStackTop += 16;
-    binaryOp3(sub, false, SP, SP, currentStackTop, true);
-    writeFile("\tsub\tsp, sp, #%d\n", currentStackTop);
+    binaryOp3(INST_SUB, 1, SP, SP, currentStackTop, true);
+
     currentStackTop -= 16;
-    binaryOpStoreLoad(stp, false, X29, X30, SP, currentStackTop);
-    writeFile("\tstp\tx29, x30, [sp, #%d]\n", currentStackTop);//2 x 64bit = 16byte
-    binaryOp3(add, false, X29, SP, currentStackTop, true);
-    writeFile("\tadd\tx29, sp, #%d\n", currentStackTop);
+    binaryOpStoreLoad(INST_STP, 1, X29, X30, SP, currentStackTop);
+    //2 x 64bit = 16byte
+    binaryOp3(INST_ADD, 1, X29, SP, currentStackTop, true);
+
     currentStackTop -= stackStep;
 }
 
@@ -347,10 +347,10 @@ void releaseStack(int stackSize) {
     currentStackTop = alignStackSize(stackSize);
     //save x29 & x30
     currentStackTop += 16;
-    binaryOpStoreLoad(ldp, false, X29, X30, SP, currentStackTop - 16);
-    writeFile("\tldp\tx29, x30, [sp, #%d]\n", currentStackTop - 16);
-    binaryOp3(add, false, SP, SP, currentStackTop, true);
-    writeFile("\tadd\tsp, sp, #%d\n", currentStackTop);
+    binaryOpStoreLoad(INST_LDP, 1, X29, X30, SP, currentStackTop - 16);
+
+    binaryOp3(INST_ADD, 1, SP, SP, currentStackTop, true);
+
 }
 
 void storeParamsToStack(MirMethodParam *param) {
@@ -360,13 +360,13 @@ void storeParamsToStack(MirMethodParam *param) {
         int offset = allocVarFromStack(param->paramName, param->byte);
         const char *regName = getCommonRegName(paramIndex, param->byte);
         binaryOpStoreLoad(
-                str,
-                false,
+                INST_STR,
+                1,
                 commonRegisterBinary[paramIndex],
                 0,
                 SP,
                 offset);
-        writeFile("\tstr\t%s, [sp, #%d]\n", regName, offset);
+
         free((void *) regName);
         param = param->next;
         paramIndex++;
@@ -396,13 +396,13 @@ int loadVarIntoReg(MirCode *mirCode, MirOperand *mirOperand) {
                 getVarSizeFromStack(mirOperand->identity)
         );
         binaryOpStoreLoad(
-                ldr,
-                false,
+                INST_LDR,
+                1,
                 commonRegisterBinary[fromRegIndex],
                 0,
                 SP,
                 stackOffset);
-        writeFile("\tldr\t%s, [sp, #%d]\n", fromRegName, stackOffset);
+
         free(((void *) fromRegName));
         commonRegsVarName[fromRegIndex] = mirOperand->identity;
     }
@@ -490,49 +490,45 @@ void generateCodes(MirCode *mirCode) {
                         loge(ARM64_TAG, "internal error: can not found var %s on stack", mirOperand->identity);
                     }
                     binaryOpStoreLoad(
-                            ldr,
-                            greaterRegisterWidth == ARM_BLOCK_32_ALIGN,
+                            INST_LDR,
+                            greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
                             distRegIndex,
                             0,
                             SP,
                             stackOffset);
-                    writeFile("\tldr\t%s, [sp, #%d]\n", distRegName, stackOffset);
+
                 } else {
                     const char *fromRegName = getCommonRegName(
                             fromRegIndex,
                             greaterRegisterWidth
                     );
-                    binaryOp2(mov, greaterRegisterWidth == ARM_BLOCK_32_ALIGN, distRegIndex, fromRegIndex, false);
-                    writeFile("\tmov\t%s, %s\n", distRegName, fromRegName);
+                    binaryOp2(INST_MOV, greaterRegisterWidth == ARM_BLOCK_64_ALIGN, distRegIndex, fromRegIndex, false);
+
                     free(((void *) fromRegName));
                 }
             } else {
-                writeFile("\tmov\t%s, ", distRegName);
+
                 switch (mirOperand->type) {
                     case OPERAND_RET: {
-                        //ret must be x0
-                        binaryOp2(mov,
-                                  greaterRegisterWidth == ARM_BLOCK_32_ALIGN,
+                        //INST_RET must be x0
+                        binaryOp2(INST_MOV,
+                                  greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
                                   distRegIndex,
                                   X0,
                                   false
                         );
-                        writeFile("%s", getCommonRegName(
-                                0,
-                                greaterRegisterWidth
-                        ));
                         break;
                     }
                     case OPERAND_INT8:
                     case OPERAND_INT16:
                     case OPERAND_INT32: {
-                        binaryOp2(mov,
-                                  greaterRegisterWidth == ARM_BLOCK_32_ALIGN,
+                        binaryOp2(INST_MOV,
+                                  greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
                                   distRegIndex,
                                   mirOperand->dataInt32,
                                   true
                         );
-                        writeFile("#%d", mirOperand->dataInt32);
+
                         break;
                     }
                     case OPERAND_INT64:
@@ -540,17 +536,17 @@ void generateCodes(MirCode *mirCode) {
                     case OPERAND_FLOAT64: {
                         loge(ARM64_TAG, "not impl yet(big imm need be on stack)");
                         //todo this is wrong
-                        binaryOp2(mov,
-                                  greaterRegisterWidth == ARM_BLOCK_32_ALIGN,
+                        binaryOp2(INST_MOV,
+                                  greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
                                   distRegIndex,
                                   mirOperand->dataFloat64,
                                   true
                         );
-                        writeFile("#%f", mirOperand->dataFloat64);
+
                         break;
                     }
                 }
-                writeFile("\n");
+
             }
             commonRegsVarName[distRegIndex] = mir2->distIdentity;
             int distStackOffset = getVarFromStack(mir2->distIdentity);
@@ -559,13 +555,13 @@ void generateCodes(MirCode *mirCode) {
                 distStackOffset = allocVarFromStack(mir2->distIdentity, distSize);
             }
             binaryOpStoreLoad(
-                    str,
-                    greaterRegisterWidth == ARM_BLOCK_32_ALIGN,
+                    INST_STR,
+                    greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
                     distRegIndex,
                     0,
                     SP,
                     distStackOffset);
-            writeFile("\tstr\t%s, [sp, #%d]\n", distRegName, distStackOffset);
+
             free(((void *) distRegName));
             break;
         }
@@ -598,13 +594,13 @@ void generateCodes(MirCode *mirCode) {
                         value1RegIndex,
                         greaterRegisterWidth
                 );
-                binaryOp2(mov,
-                          greaterRegisterWidth == ARM_BLOCK_32_ALIGN,
+                binaryOp2(INST_MOV,
+                          greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
                           commonRegisterBinary[value1RegIndex],
                           convertMirOperandImmBinary(mirOperand),
                           true
                 );
-                writeFile("\tmov\t%s, %s\n", value1, convertMirOperandAsm(mirOperand));
+
             }
             if (value1 == nullptr) {
                 value1 = getCommonRegName(
@@ -627,7 +623,7 @@ void generateCodes(MirCode *mirCode) {
                 );
                 commonRegsVarName[value2RegIndex] = "mir3_value2";
             } else if (mirOperand->type == OPERAND_RET) {
-                value2RegIndex =;
+                value2RegIndex = 0;
                 value2 = getCommonRegName(
                         0,
                         ARM_BLOCK_64_ALIGN
@@ -640,20 +636,20 @@ void generateCodes(MirCode *mirCode) {
                     value2Imm = convertMirOperandImmBinary(mirOperand);
                     value2 = convertMirOperandAsm(mirOperand);
                 } else {
-                    //stupid arm64 do not support imm in mul & div inst
+                    //stupid arm64 do not support imm in INST_MUL & div inst
                     //value2 must be reg!!!
                     value2RegIndex = allocEmptyReg(mirCode);
                     value2 = getCommonRegName(
                             value2RegIndex,
                             greaterRegisterWidth
                     );
-                    binaryOp2(mov,
-                              greaterRegisterWidth == ARM_BLOCK_32_ALIGN,
+                    binaryOp2(INST_MOV,
+                              greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
                               commonRegisterBinary[value2RegIndex],
                               convertMirOperandImmBinary(mirOperand),
                               true
                     );
-                    writeFile("\tmov\t%s, %s\n", value2, convertMirOperandAsm(mirOperand));
+
                     commonRegsVarName[value2RegIndex] = "mir3_value2";
                 }
             }
@@ -683,49 +679,49 @@ void generateCodes(MirCode *mirCode) {
                 case OP_UNKNOWN:
                     break;
                 case OP_ADD:
-                    binaryOp3(add,
-                              greaterRegisterWidth == ARM_BLOCK_32_ALIGN,
+                    binaryOp3(INST_ADD,
+                              greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
                               commonRegisterBinary[distRegIndex],
                               commonRegisterBinary[value1RegIndex],
                               b,
                               value2RegIndex == -1);
-                    writeFile("\tadd\t%s, %s, %s\n", dist, value1, value2);
+
                     break;
                 case OP_SUB:
-                    binaryOp3(sub,
-                              greaterRegisterWidth == ARM_BLOCK_32_ALIGN,
+                    binaryOp3(INST_SUB,
+                              greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
                               commonRegisterBinary[distRegIndex],
                               commonRegisterBinary[value1RegIndex],
                               b,
                               value2RegIndex == -1);
-                    writeFile("\tsub\t%s, %s, %s\n", dist, value1, value2);
+
                     break;
                 case OP_MUL:
-                    binaryOp3(mul,
-                              greaterRegisterWidth == ARM_BLOCK_32_ALIGN,
+                    binaryOp3(INST_MUL,
+                              greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
                               commonRegisterBinary[distRegIndex],
                               commonRegisterBinary[value1RegIndex],
                               b,
                               value2RegIndex == -1);
-                    writeFile("\tmul\t%s, %s, %s\n", dist, value1, value2);
+
                     break;
                 case OP_DIV:
-                    binaryOp3(sdiv,
-                              greaterRegisterWidth == ARM_BLOCK_32_ALIGN,
+                    binaryOp3(INST_SDIV,
+                              greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
                               commonRegisterBinary[distRegIndex],
                               commonRegisterBinary[value1RegIndex],
                               b,
                               value2RegIndex == -1);
-                    writeFile("\tdiv\t%s, %s, %s\n", dist, value1, value2);
+
                     break;
                 case OP_MOD:
-                    binaryOp3(mod,
-                              greaterRegisterWidth == ARM_BLOCK_32_ALIGN,
+                    binaryOp3(INST_MOD,
+                              greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
                               commonRegisterBinary[distRegIndex],
                               commonRegisterBinary[value1RegIndex],
                               b,
                               value2RegIndex == -1);
-                    writeFile("\tmod\t%s, %s, %s\n", dist, value1, value2);
+
                     break;
                 case OP_ASSIGNMENT:
                     break;
@@ -736,13 +732,13 @@ void generateCodes(MirCode *mirCode) {
                 int distSize = getPrimitiveMirOperandSizeInByte(mir3->distType);
                 distStackOffset = allocVarFromStack(mir3->distIdentity, distSize);
             }
-            binaryOpStoreLoad(str,
-                              greaterRegisterWidth == ARM_BLOCK_32_ALIGN,
+            binaryOpStoreLoad(INST_STR,
+                              greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
                               commonRegisterBinary[distRegIndex],
                               0,
                               SP,
                               distStackOffset);
-            writeFile("\tstr\t%s, [sp, #%d]\n", dist, distStackOffset);
+
             free(((void *) dist));
             free(((void *) value1));
             free(((void *) value2));
@@ -768,29 +764,25 @@ void generateCodes(MirCode *mirCode) {
                             paramRegIndex,
                             greaterRegisterWidth
                     );
-                    binaryOp2(mov,
-                              greaterRegisterWidth == ARM_BLOCK_32_ALIGN,
+                    binaryOp2(INST_MOV,
+                              greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
                               commonRegisterBinary[paramRegIndex],
                               commonRegisterBinary[valueRegIndex],
                               false);
-                    writeFile("\tmov\t%s, %s\n", paramRegName, valueReg);
+
                     free(((void *) paramRegName));
                 } else if (mirOperand->type == OPERAND_RET) {
                     int paramRegIndex = allocParamReg(paramIndex);
-                    commonRegsVarName[paramRegIndex] = "ret";
+                    commonRegsVarName[paramRegIndex] = "INST_RET";
                     const char *paramRegName = getCommonRegName(
                             paramRegIndex,
                             ARM_BLOCK_64_ALIGN
                     );
-                    binaryOp2(mov,
+                    binaryOp2(INST_MOV,
                               ARM_BLOCK_64_ALIGN,
                               commonRegisterBinary[paramRegIndex],
                               X0,
                               false);
-                    writeFile("\tmov\t%s, %s\n", paramRegName, getCommonRegName(
-                            0,
-                            ARM_BLOCK_64_ALIGN
-                    ));
                     free(((void *) paramRegName));
                 } else {
                     //value1 must be reg!!!
@@ -802,26 +794,26 @@ void generateCodes(MirCode *mirCode) {
                             paramRegIndex,
                             getPrimitiveMirOperandSizeInByte(mirOperand->type)
                     );
-                    binaryOp2(mov,
-                              getPrimitiveMirOperandSizeInByte(mirOperand->type) == ARM_BLOCK_32_ALIGN,
+                    binaryOp2(INST_MOV,
+                              getPrimitiveMirOperandSizeInByte(mirOperand->type) == ARM_BLOCK_64_ALIGN,
                               commonRegisterBinary[paramRegIndex],
                               convertMirOperandImmBinary(mirOperand),
                               true);
-                    writeFile("\tmov\t%s, %s\n", paramRegName, convertMirOperandAsm(mirOperand));
+
                     free(((void *) paramRegName));
                 }
                 mirObjectList = mirObjectList->next;
                 paramIndex++;
             }
             //jump to method label
-            binaryOpBranch(bl, UNUSED, mirCall->label);
-            writeFile("\tbl\t%s\n", mirCall->label);
+            binaryOpBranch(INST_BL, UNUSED, mirCall->label);
+
             clearRegs();
             break;
         }
         case MIR_LABEL: {
             emitLabel(mirCode->mirLabel->label);
-            writeFile("%s:\n", mirCode->mirLabel->label);
+
             break;
         }
         case MIR_RET: {
@@ -829,45 +821,31 @@ void generateCodes(MirCode *mirCode) {
             MirOperand *mirOperand = mirRet->value;
             if (mirOperand == nullptr) {
                 //return void
-                binaryOp2(mov, false, X0, XZR, false);
-                writeFile("\tmov\tx0, xzr\n");
+                binaryOp2(INST_MOV, 1, X0, XZR, false);
+
             } else {
                 //return value
                 if (mirOperand->type == OPERAND_IDENTITY) {
                     int valueRegIndex = loadVarIntoReg(mirCode, mirOperand);
                     int valueRegisterWidth = getOperandSize(mirOperand);
-                    binaryOp2(mov, false, X0, valueRegIndex, false);
-                    const char *value = getCommonRegName(
-                            valueRegIndex,
-                            getVarSizeFromStack(mirOperand->identity)
-                    );
-
-                    writeFile("\tmov\t%s, %s\n", getCommonRegName(
-                            0,
-                            getVarSizeFromStack(mirOperand->identity)
-                    ), value);
-                    free(((void *) value));
+                    binaryOp2(INST_MOV, valueRegisterWidth == ARM_BLOCK_64_ALIGN, X0, valueRegIndex, false);
                 } else if (mirOperand->type == OPERAND_RET) {
                     //do nothing
-                    //because we do not need "mov X0, X0"
+                    //because we do not need "INST_MOV X0, X0"
                 } else {
                     //value1 must be reg!!!
                     const char *value = convertMirOperandAsm(mirOperand);
-                    binaryOp2(mov, false, X0, convertMirOperandImmBinary(mirOperand), true);
-                    writeFile("\tmov\t%s, %s\n", getCommonRegName(
-                            0,
-                            getPrimitiveMirOperandSizeInByte(mirOperand->type)
-                    ), value);
+                    binaryOp2(INST_MOV, 1, X0, convertMirOperandImmBinary(mirOperand), true);
                     free(((void *) value));
                 }
             }
-            commonRegsVarName[0] = "ret";
+            commonRegsVarName[0] = "INST_RET";
             //move the value to x0
             break;
         }
         case MIR_JMP: {
-            binaryOpBranch(b, UNUSED, mirCode->mirLabel->label);
-            writeFile("\tb\t%s\n", mirCode->mirLabel->label);
+            binaryOpBranch(INST_B, UNUSED, mirCode->mirLabel->label);
+
             break;
         }
         case MIR_CMP: {
@@ -900,12 +878,12 @@ void generateCodes(MirCode *mirCode) {
                         value1RegIndex,
                         greaterSize
                 );
-                binaryOp2(mov,
-                          greaterSize == ARM_BLOCK_32_ALIGN,
+                binaryOp2(INST_MOV,
+                          greaterSize == ARM_BLOCK_64_ALIGN,
                           commonRegisterBinary[value1RegIndex],
                           convertMirOperandImmBinary(mirOperand1),
                           true);
-                writeFile("\tmov\t%s, %s\n", value1, convertMirOperandAsm(mirOperand1));
+
             }
             commonRegsVarName[value1RegIndex] = "cmp_value1";
             //value2
@@ -934,66 +912,66 @@ void generateCodes(MirCode *mirCode) {
                 value2Imm = convertMirOperandImmBinary(mirOperand2);
             }
             binaryOp2(
-                    cmp,
+                    INST_CMP,
                     greaterSize == ARM_BLOCK_64_ALIGN,
                     commonRegisterBinary[value1RegIndex],
                     value2RegIndex != -1 ? commonRegisterBinary[value2RegIndex] : value2Imm,
                     value2RegIndex == -1
             );
-            writeFile("\tcmp\t%s, %s\n", value1, value2);
+
             free(((void *) value1));
             free(((void *) value2));
             //op
             switch (mirCmp->op) {
                 case CMP_G: {
-                    binaryOpBranch(bc, GT, mirCmp->trueLabel->label);
-                    writeFile("\tb.gt\t%s\n", mirCmp->trueLabel->label);
+                    binaryOpBranch(INST_BC, GT, mirCmp->trueLabel->label);
+
                     break;
                 }
                 case CMP_L: {
-                    binaryOpBranch(bc, LT, mirCmp->trueLabel->label);
-                    writeFile("\tb.lt\t%s\n", mirCmp->trueLabel->label);
+                    binaryOpBranch(INST_BC, LT, mirCmp->trueLabel->label);
+
                     break;
                 }
                 case CMP_GE: {
-                    binaryOpBranch(bc, GE, mirCmp->trueLabel->label);
-                    writeFile("\tb.ge\t%s\n", mirCmp->trueLabel->label);
+                    binaryOpBranch(INST_BC, GE, mirCmp->trueLabel->label);
+
                     break;
                 }
                 case CMP_LE: {
-                    binaryOpBranch(bc, LE, mirCmp->trueLabel->label);
-                    writeFile("\tb.le\t%s\n", mirCmp->trueLabel->label);
+                    binaryOpBranch(INST_BC, LE, mirCmp->trueLabel->label);
+
                     break;
                 }
                 case CMP_E: {
-                    binaryOpBranch(bc, EQ, mirCmp->trueLabel->label);
-                    writeFile("\tb.eq\t%s\n", mirCmp->trueLabel->label);
+                    binaryOpBranch(INST_BC, EQ, mirCmp->trueLabel->label);
+
                     break;
                 }
                 case CMP_NE: {
-                    binaryOpBranch(bc, NE, mirCmp->trueLabel->label);
-                    writeFile("\tb.ne\t%s\n", mirCmp->trueLabel->label);
+                    binaryOpBranch(INST_BC, NE, mirCmp->trueLabel->label);
+
                     break;
                 }
                 case CMP_UNKNOWN:
                 default: {
-                    loge(ARM64_TAG, "unknown cmp op:%d", mirCmp->op);
+                    loge(ARM64_TAG, "unknown INST_CMP op:%d", mirCmp->op);
                     break;
                 }
             }
             if (mirCmp->falseLabel != nullptr) {
-                binaryOpBranch(b, UNUSED, mirCmp->falseLabel->label);
-                writeFile("\tb\t%s\n", mirCmp->falseLabel->label);
+                binaryOpBranch(INST_B, UNUSED, mirCmp->falseLabel->label);
+
             }
             break;
         }
         case MIR_OPT_FLAG: {
             if (mirCode->optFlag == OPT_ENTER_LOOP_BLOCK) {
                 clearRegs();
-                writeFile(";loop start\n");
+
             } else if (mirCode->optFlag == OPT_EXIT_LOOP_BLOCK) {
                 clearRegs();
-                writeFile(";loop end\n");
+
             }
             break;
         }
@@ -1064,10 +1042,7 @@ int computeMethodStackSize(MirMethod *mirMethod) {
 }
 
 void generateText(MirMethod *mirMethod) {
-    writeFile("\t.globl %s\n", mirMethod->label);
-    writeFile("\t.p2align %d\n", PAGE_ALIGNMENT);
     emitLabel(mirMethod->label);
-    writeFile("%s:\n", mirMethod->label);
     clearRegs();
     int methodStackSize = computeMethodStackSize(mirMethod);
     allocStack(methodStackSize);
@@ -1078,23 +1053,17 @@ void generateText(MirMethod *mirMethod) {
         code = code->nextCode;
     }
     releaseStack(methodStackSize);
-    binaryOpRet(ret);
-    writeFile("\tret\n\n");
+    binaryOpRet(INST_RET);
 }
 
 void generateData(MirData *mirData) {
     //todo
 }
 
-void generateArm64Target(Mir *mir,
-                         int _outputAssembly,
-                         Platform platform,
-                         const char *outputFileName) {
+int generateArm64Target(Mir *mir) {
     logd(ARM64_TAG, "arm64 target generation...");
-    openFile(outputFileName);
-    outputAssembly = _outputAssembly;
+    binaryOpBranch(INST_B, UNUSED, "main");
     //.text
-    generateSection(SECTION_TEXT);
     MirMethod *mirMethod = mir->mirMethod;
     while (mirMethod != nullptr) {
         generateText(mirMethod);
@@ -1110,5 +1079,6 @@ void generateArm64Target(Mir *mir,
             mirData = mirData->next;
         }
     }
-    closeFile();
+    //todo real impl section count
+    return 1;
 }

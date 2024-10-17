@@ -12,28 +12,30 @@ typedef uint32_t Operand;
 typedef uint32_t Inst;
 
 enum Arm64Inst {
-    unknown,
+    INST_UNKNOWN,
 
-    mul,
-    add,
-    sub,
-    sdiv,
-    mod,//fake inst
+    INST_MUL,
+    INST_ADD,
+    INST_SUB,
+    INST_SDIV,
+    INST_MOD,
 
-    stp,
-    ldp,
-    str,
-    ldr,
+    INST_AND,
+    INST_OR,
 
-    cmp,
-    bc,//b.cc
+    INST_STP,
+    INST_LDP,
+    INST_STR,
+    INST_LDR,
 
-    b,//b
-    bl,
+    INST_CMP,
+    INST_BC,//b.cc
+    INST_B,//b
+    INST_BL,//bl
 
-    mov,
+    INST_MOV,
 
-    ret
+    INST_RET
 };
 
 enum BranchCondition {
@@ -57,31 +59,31 @@ struct InstBuffer {
 };
 
 void emitLabel(const char *label);
-void relocate(int32_t baseAddr);
+void relocateBinary(int32_t baseAddr);
 InstBuffer *getEmittedInstBuffer();
 
 /**
- * add sub mul div mod
+ * INST_ADD INST_SUB INST_MUL div INST_MOD
  */
-void binaryOp3(Arm64Inst inst, bool halfWidth, Operand x, Operand a, Operand b, bool bImm);
+void binaryOp3(Arm64Inst inst, uint32_t is64Bit, Operand x, Operand a, Operand b, bool bImm);
 
 /**
- * stp ldp, str ldr
+ * INST_STP INST_LDP, INST_STR INST_LDR
  */
-void binaryOpStoreLoad(Arm64Inst inst, bool halfWidth, Operand reg1, Operand reg2, Operand baseReg, int32_t offset);
+void binaryOpStoreLoad(Arm64Inst inst, uint32_t is64Bit, Operand reg1, Operand reg2, Operand baseReg, int32_t offset);
 
 /**
- * mov cmp
+ * INST_MOV INST_CMP
  */
-void binaryOp2(Arm64Inst inst, bool halfWidth, Operand dest, Operand src, bool srcImm);
+void binaryOp2(Arm64Inst inst, uint32_t is64Bit, Operand dist, Operand src, bool srcImm);
 
 /**
- * b.cc, b, bl
+ * INST_B.cc, INST_B, INST_BL
  */
 void binaryOpBranch(Arm64Inst inst, BranchCondition branchCondition, const char *label);
 
 /**
- * ret
+ * INST_RET
  */
 void binaryOpRet(Arm64Inst inst);
 

@@ -6,6 +6,7 @@
 #define PCC_CC_MIR_H
 
 #include "ast.h"
+#include <stdint.h>
 
 struct MirMethodParam;
 struct MirMethod;

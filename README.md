@@ -78,7 +78,7 @@ compiler's syntax:
 <标识符'> → <字母> <标识符'> | <数字> <标识符'> | ε
 <无符号整数> → <数字> <无符号整数'> 
 <无符号整数'> → <数字> <无符号整数'> | ε
-<字母> → a | b | … | z | A | B | … | Z
+<字母> → a | INST_B | … | z | A | B | … | Z
 <数字> → 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
 ```
 
@@ -86,7 +86,7 @@ compiler's syntax:
 here are some test code:
 
 ```
-int add(int abc,     int cd33) {
+int INST_ADD(int abc,     int cd33) {
     int c = abc + cd33;
     return c;
 }
@@ -95,7 +95,7 @@ int main() {
     int index = 0;
     int test = 0;
     for(index = 0; index<10;index=index+1) {
-        test = add(test, 1);
+        test = INST_ADD(test, 1);
     }
     return test;
 }
@@ -103,88 +103,88 @@ int main() {
 
 here are compiler's MIR result:
 ```angular2html
-2024-10-09 21:02:29.199 - optimization:		---method:add---
+2024-10-09 21:02:29.199 - optimization:		---method:INST_ADD---
 2024-10-09 21:02:29.199 - mir:		type 6: _tv_0 = abc + cd33
-2024-10-09 21:02:29.199 - mir:		ret: _tv_0
+2024-10-09 21:02:29.199 - mir:		INST_RET: _tv_0
 2024-10-09 21:02:29.199 - optimization:		---method:main---
 2024-10-09 21:02:29.199 - mir:		type 4: index = 0
 2024-10-09 21:02:29.199 - mir:		type 4: test = 0
 2024-10-09 21:02:29.199 - mir:		type 4: index = 0
 2024-10-09 21:02:29.199 - mir:			.opt flag:2
 2024-10-09 21:02:29.199 - mir:		label:_lb_2
-2024-10-09 21:02:29.199 - mir:		cmp: index < 10 ? _lb_0 : _lb_1
+2024-10-09 21:02:29.199 - mir:		INST_CMP: index < 10 ? _lb_0 : _lb_1
 2024-10-09 21:02:29.199 - mir:		label:_lb_0
-2024-10-09 21:02:29.199 - mir:		call: add(
+2024-10-09 21:02:29.199 - mir:		call: INST_ADD(
 2024-10-09 21:02:29.199 - mir:			test
 2024-10-09 21:02:29.199 - mir:			1
 2024-10-09 21:02:29.199 - mir:		)
-2024-10-09 21:02:29.199 - mir:		type 6: test = [last ret]
+2024-10-09 21:02:29.199 - mir:		type 6: test = [last INST_RET]
 2024-10-09 21:02:29.199 - mir:		type 4: _tv_16 = index + 1
 2024-10-09 21:02:29.199 - mir:		type 4: index = _tv_16
 2024-10-09 21:02:29.199 - mir:		jmp:_lb_2
 2024-10-09 21:02:29.199 - mir:		label:_lb_1
 2024-10-09 21:02:29.199 - mir:			.opt flag:3
-2024-10-09 21:02:29.199 - mir:		ret: test
+2024-10-09 21:02:29.199 - mir:		INST_RET: test
 ```
 
 here are compiler's arm64 assembly code result:
 ```
 .section .text
-	.globl add
+	.globl INST_ADD
 	.p2align 2
-add:
-	sub	sp, sp, #32
-	stp	x29, x30, [sp, #16]
-	add	x29, sp, #16
-	str	w0, [sp, #12]
-	str	w1, [sp, #8]
-	ldr	w0, [sp, #12]
-	ldr	w1, [sp, #8]
-	add	w0, w0, w1
-	str	w0, [sp, #4]
-	mov	w0, w0
-	ldp	x29, x30, [sp, #16]
-	add	sp, sp, #32
-	ret
+INST_ADD:
+	INST_SUB	sp, sp, #32
+	INST_STP	x29, x30, [sp, #16]
+	INST_ADD	x29, sp, #16
+	INST_STR	w0, [sp, #12]
+	INST_STR	w1, [sp, #8]
+	INST_LDR	w0, [sp, #12]
+	INST_LDR	w1, [sp, #8]
+	INST_ADD	w0, w0, w1
+	INST_STR	w0, [sp, #4]
+	INST_MOV	w0, w0
+	INST_LDP	x29, x30, [sp, #16]
+	INST_ADD	sp, sp, #32
+	INST_RET
 
 	.globl main
 	.p2align 2
 main:
-	sub	sp, sp, #32
-	stp	x29, x30, [sp, #16]
-	add	x29, sp, #16
-	mov	w0, #0
-	str	w0, [sp, #12]
-	mov	w1, #0
-	str	w1, [sp, #8]
-	mov	w0, #0
-	str	w0, [sp, #12]
+	INST_SUB	sp, sp, #32
+	INST_STP	x29, x30, [sp, #16]
+	INST_ADD	x29, sp, #16
+	INST_MOV	w0, #0
+	INST_STR	w0, [sp, #12]
+	INST_MOV	w1, #0
+	INST_STR	w1, [sp, #8]
+	INST_MOV	w0, #0
+	INST_STR	w0, [sp, #12]
 ;loop start
 _lb_2:
-	ldr	w0, [sp, #12]
-	cmp	w0, #10
-	b.lt	_lb_0
-	b	_lb_1
+	INST_LDR	w0, [sp, #12]
+	INST_CMP	w0, #10
+	INST_B.lt	_lb_0
+	INST_B	_lb_1
 _lb_0:
-	ldr	w1, [sp, #8]
-	mov	w0, w1
-	mov	w1, #1
-	bl	add
-	mov	w0, w0
-	str	w0, [sp, #8]
-	ldr	w1, [sp, #12]
-	add	w1, w1, #1
-	str	w1, [sp, #4]
-	mov	w2, w1
-	str	w2, [sp, #12]
-	b	_lb_2
+	INST_LDR	w1, [sp, #8]
+	INST_MOV	w0, w1
+	INST_MOV	w1, #1
+	INST_BL	INST_ADD
+	INST_MOV	w0, w0
+	INST_STR	w0, [sp, #8]
+	INST_LDR	w1, [sp, #12]
+	INST_ADD	w1, w1, #1
+	INST_STR	w1, [sp, #4]
+	INST_MOV	w2, w1
+	INST_STR	w2, [sp, #12]
+	INST_B	_lb_2
 _lb_1:
 ;loop end
-	ldr	w0, [sp, #8]
-	mov	w0, w0
-	ldp	x29, x30, [sp, #16]
-	add	sp, sp, #32
-	ret
+	INST_LDR	w0, [sp, #8]
+	INST_MOV	w0, w0
+	INST_LDP	x29, x30, [sp, #16]
+	INST_ADD	sp, sp, #32
+	INST_RET
 ```
 
 ### how to build

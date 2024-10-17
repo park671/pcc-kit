@@ -148,6 +148,11 @@ int main(int argc, char **argv) {
     Mir *mir = generateMir(program);
     releaseAstMemory();
     mir = optimize(mir, optimizationLevel);
-    generateTargetFile(mir, targetArch, targetPlatform, outputAssembly, outputFileName);
+    generateTargetFile(mir,
+                       targetArch,
+                       targetPlatform,
+                       outputAssembly,
+                       sharedLib,
+                       outputFileName);
     return 0;
 }
