@@ -129,63 +129,69 @@ here are compiler's MIR result:
 
 here are compiler's arm64 assembly code result:
 ```
-.section .text
-	.globl INST_ADD
-	.p2align 2
-INST_ADD:
-	INST_SUB	sp, sp, #32
-	INST_STP	x29, x30, [sp, #16]
-	INST_ADD	x29, sp, #16
-	INST_STR	w0, [sp, #12]
-	INST_STR	w1, [sp, #8]
-	INST_LDR	w0, [sp, #12]
-	INST_LDR	w1, [sp, #8]
-	INST_ADD	w0, w0, w1
-	INST_STR	w0, [sp, #4]
-	INST_MOV	w0, w0
-	INST_LDP	x29, x30, [sp, #16]
-	INST_ADD	sp, sp, #32
-	INST_RET
-
-	.globl main
-	.p2align 2
+_start:
+	mov x29, #0
+	mov x30, #0
+	bl main
+	mov x8, #93
+	svc #0
+add:
+	sub sp, sp, #48
+	stp x29, x30, [sp, #32]
+	add x29, sp, #32
+	str x0, [sp, #28]
+	str x1, [sp, #24]
+	ldr x0, [sp, #28]
+	ldr x1, [sp, #24]
+	add x0, x0, x1
+	str x0, [sp, #20]
+	add x0, x0, #1
+	str x0, [sp, #20]
+	mov x0, x0
+	ldp x29, x30, [sp, #32]
+	add sp, sp, #48
+	ret
 main:
-	INST_SUB	sp, sp, #32
-	INST_STP	x29, x30, [sp, #16]
-	INST_ADD	x29, sp, #16
-	INST_MOV	w0, #0
-	INST_STR	w0, [sp, #12]
-	INST_MOV	w1, #0
-	INST_STR	w1, [sp, #8]
-	INST_MOV	w0, #0
-	INST_STR	w0, [sp, #12]
-;loop start
+	sub sp, sp, #48
+	stp x29, x30, [sp, #32]
+	add x29, sp, #32
+	mov x0, #0
+	str x0, [sp, #28]
+	mov x1, #0
+	str x1, [sp, #24]
+	mov x0, #0
+	str x0, [sp, #28]
 _lb_2:
-	INST_LDR	w0, [sp, #12]
-	INST_CMP	w0, #10
-	INST_B.lt	_lb_0
-	INST_B	_lb_1
+	ldr x0, [sp, #28]
+	cmp x0, #11
+	b.<lt> _lb_0
+	b _lb_1
 _lb_0:
-	INST_LDR	w1, [sp, #8]
-	INST_MOV	w0, w1
-	INST_MOV	w1, #1
-	INST_BL	INST_ADD
-	INST_MOV	w0, w0
-	INST_STR	w0, [sp, #8]
-	INST_LDR	w1, [sp, #12]
-	INST_ADD	w1, w1, #1
-	INST_STR	w1, [sp, #4]
-	INST_MOV	w2, w1
-	INST_STR	w2, [sp, #12]
-	INST_B	_lb_2
+	ldr x1, [sp, #24]
+	mov x0, x1
+	mov x1, #1
+	bl add
+	mov x0, x0
+	str x0, [sp, #24]
+	ldr x1, [sp, #28]
+	add x1, x1, #1
+	str x1, [sp, #20]
+	mov x2, x1
+	str x2, [sp, #28]
+	b _lb_2
 _lb_1:
-;loop end
-	INST_LDR	w0, [sp, #8]
-	INST_MOV	w0, w0
-	INST_LDP	x29, x30, [sp, #16]
-	INST_ADD	sp, sp, #32
-	INST_RET
+	ldr x0, [sp, #24]
+	add x0, x0, #1
+	str x0, [sp, #16]
+	mov x0, x0
+	ldp x29, x30, [sp, #32]
+	add sp, sp, #48
+	ret
 ```
+
+![E01cFLKrZm](https://github.com/user-attachments/assets/c253231b-b8bc-47bb-97fd-57ef2576743a)
+2024-10-18已支持linux aarch64的elf封装
+
 
 ### how to build
 
