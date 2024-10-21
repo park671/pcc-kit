@@ -202,7 +202,7 @@ void binaryOp3(Arm64Inst inst, uint32_t is64Bit, Operand x, Operand a, Operand b
                 logd(BIN_TAG, "\tadd %s, %s, %s", revertRegisterNames[x], revertRegisterNames[a],
                      revertRegisterNames[b]);
                 baseOp = 0x0b000000 | is64Bit << 31;  // 32: 0x0b, 64位: 0x8b
-                emitInst(baseOp | x | a << 5 | b << 16);  // ADD x, a, INST_B
+                emitInst(baseOp | x | a << 5 | b << 16);  // ADD x, a, b
             }
             break;
         }
@@ -216,7 +216,7 @@ void binaryOp3(Arm64Inst inst, uint32_t is64Bit, Operand x, Operand a, Operand b
                 logd(BIN_TAG, "\tsub %s, %s, %s", revertRegisterNames[x], revertRegisterNames[a],
                      revertRegisterNames[b]);
                 baseOp = 0x4b000000 | is64Bit << 31;  // 32: 0x4b, 64位: 0xcb
-                emitInst(baseOp | x | a << 5 | b << 16);  // SUB x, a, INST_B
+                emitInst(baseOp | x | a << 5 | b << 16);  // SUB x, a, b
             }
             break;
         }

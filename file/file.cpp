@@ -16,7 +16,7 @@ void openFile(const char *fileName) {
         loge(FILE_TAG, "current file is not closed.");
         return;
     }
-    FILE *file = fopen(fileName, "w+INST_B");
+    FILE *file = fopen(fileName, "w+b");
     if (file == nullptr) {
         loge(FILE_TAG, "Failed to open file");
         targetFile = nullptr;
