@@ -16,6 +16,7 @@ enum TokenType {
     TOKEN_CHARS,
     TOKEN_KEYWORD,
     TOKEN_TYPE,
+    TOKEN_POINTER,
     TOKEN_IDENTIFIER
 };
 

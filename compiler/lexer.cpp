@@ -31,25 +31,31 @@ static const size_t operatorSize = 8;
 const char *getTokenTypeName(TokenType tokenType) {
     switch (tokenType) {
         case TOKEN_HEAD:
-            return "token_head";
+            return "head";
         case TOKEN_BOUNDARY:
-            return "token_boundary";
+            return "boundary";
         case TOKEN_OPERATOR:
-            return "token_operator";
+            return "operator";
         case TOKEN_OPERATOR_2:
-            return "token_operator2";
+            return "operator2";
         case TOKEN_INTEGER:
-            return "token_integer";
+            return "integer";
         case TOKEN_FLOAT:
-            return "token_float";
+            return "float";
         case TOKEN_KEYWORD:
-            return "token_keyword";
+            return "keyword";
         case TOKEN_TYPE:
-            return "token_type";
+            return "type";
         case TOKEN_IDENTIFIER:
-            return "token_identifier";
+            return "identifier";
+        case TOKEN_BOOL:
+            return "bool";
+        case TOKEN_CHARS:
+            return "chars";
+        case TOKEN_POINTER:
+            return "pointer";
     }
-    return "token_unknown";
+    return "unknown";
 }
 
 static void trimString(char *buffer) {
@@ -95,6 +101,18 @@ inline static bool isBoundary(char a) {
         }
     }
     return false;
+}
+
+inline static bool isQuotation(char a) {
+    return a == '\"';
+}
+
+inline static bool isEscape(char a) {
+    return a == '\\';
+}
+
+inline static bool isPointer(char a) {
+    return a == '*';
 }
 
 inline static char *makeCharsCopy(const char *origin) {
@@ -159,12 +177,39 @@ static Token *lexer(Token *tail, const char *buffer) {
     size_t length = strlen(buffer);
     char tmp[256];
     memset(((void *) tmp), 0, 256);
+    bool nextCharEscape = false;
+    bool inCharsSession = false;
     for (int i = 0; i < length; i++) {
-        if (buffer[i] == ' ') {
+
+        if (inCharsSession && isEscape(buffer[i])) {
+            nextCharEscape = true;
+            continue;
+        } else if (isQuotation(buffer[i]) && !nextCharEscape) {
+            if (!inCharsSession) {
+                tail = processCompletedString(tail, tmp);
+            } else {
+                Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
+                token->tokenType = TOKEN_CHARS;
+                token->content = makeCharsCopy(tmp);
+                tail->next = token;
+                tail = token;
+                memset(((void *) tmp), 0, 256);
+            }
+            inCharsSession = !inCharsSession;
+            continue;
+        } else if (inCharsSession) {
+            snprintf(tmp, 256, "%s%c", tmp, buffer[i]);
+            nextCharEscape = false;
+            continue;
+        } else if (buffer[i] == ' ') {
             tail = processCompletedString(tail, tmp);
             continue;
-        }
-        if (isBoundary(buffer[i])) {
+        } else if (isPointer(buffer[i])) {
+            if (tail->tokenType == TOKEN_TYPE) {
+                tail->tokenType = TOKEN_POINTER;
+                continue;
+            }
+        } else if (isBoundary(buffer[i])) {
             tail = processCompletedString(tail, tmp);
             Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
             token->tokenType = TOKEN_BOUNDARY;
@@ -240,7 +285,7 @@ void printTokenStack(Token *tokens) {
     Token *p = tokens;
     while (p != nullptr) {
         if (p->tokenType != TOKEN_HEAD) {
-            logd(LEXER_TAG, "token:%s, content:%s", getTokenTypeName(p->tokenType), p->content);
+            logd(LEXER_TAG, "%s :%s", getTokenTypeName(p->tokenType), p->content);
         }
         p = p->next;
     }
