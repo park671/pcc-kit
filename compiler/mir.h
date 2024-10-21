@@ -36,7 +36,7 @@ enum MirType {
 struct MirCode;
 
 struct MirMethod {
-    char *label;//identity, in another word: method name.
+    const char *label;//identity, in another word: method name.
     MirMethodParam *param;//nullable
     MirCode *code;
 
@@ -44,7 +44,7 @@ struct MirMethod {
 };
 
 struct MirMethodParam {
-    char *paramName;
+    const char *paramName;
     bool integer;//true-int, false-float
     bool sign;//true-signed, false-unsigned
     int byte;//1-int8, 2-int16, 4-int32, 8-int64
@@ -99,7 +99,7 @@ enum MirOperandType {
 struct MirOperand {
     MirOperandType type;
     union {
-        char *identity;
+        const char *identity;
 
         int8_t dataInt8;
         int16_t dataInt16;
@@ -126,7 +126,7 @@ enum MirOperator {
 
 struct Mir3 {
     MirOperandType distType;
-    char *distIdentity;
+    const char *distIdentity;
     MirOperand value1;
     MirOperator op;
     MirOperand value2;
@@ -134,7 +134,7 @@ struct Mir3 {
 
 struct Mir2 {
     MirOperandType distType;
-    char *distIdentity;
+    const char *distIdentity;
     MirOperator op;
     MirOperand fromValue;
 };
@@ -163,7 +163,7 @@ struct MirRet {
 };
 
 struct MirLabel {
-    char *label;
+    const char *label;
 };
 
 struct MirObjectList {
@@ -172,7 +172,7 @@ struct MirObjectList {
 };
 
 struct MirCall {
-    char *label;
+    const char *label;
     MirObjectList *mirObjectList;//nullable
 };
 

@@ -1,12 +1,11 @@
 //
 // Created by Park Yu on 2024/9/11.
 //
-#include <cstdio>
-#include <cstring>
+#include <stdio.h>
+#include <string.h>
 #include "lexer.h"
 #include "logger.h"
 #include <stack>
-#include <string>
 #include "mspace.h"
 
 using namespace std;
@@ -17,7 +16,19 @@ using namespace std;
 static const char *LEXER_TAG = "lexer";
 static const char *VAR_TAG = "var";
 
-char *getTokenTypeName(TokenType tokenType) {
+static const char *keywords[] = {"if", "else", "for", "while", "return"};
+static const size_t keywordSize = 5;
+
+static const char *types[] = {"void", "char", "int", "short", "long", "float", "double"};
+static const size_t typeSize = 7;
+
+static const char boundaries[] = "{}(),;";
+static const size_t boundarySize = 6;
+
+static const char operators[] = "=+-*/<>!";
+static const size_t operatorSize = 8;
+
+const char *getTokenTypeName(TokenType tokenType) {
     switch (tokenType) {
         case TOKEN_HEAD:
             return "token_head";
@@ -63,11 +74,6 @@ static void trimString(char *buffer) {
     buffer[size] = '\0';
 }
 
-string keywords[] = {"if", "else", "for", "while", "return"};
-string types[] = {"void", "char", "int", "short", "long", "float", "double"};
-char boundaries[] = "{}(),;";
-char operators[] = "=+-*/<>!";
-
 inline static bool isBoolOperator(char a) {
     if (a == '|' || a == '&') {
         return true;
@@ -76,14 +82,14 @@ inline static bool isBoolOperator(char a) {
 }
 
 inline static bool isOperator(char a) {
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < operatorSize; i++) {
         if (operators[i] == a)return true;
     }
     return false;
 }
 
 inline static bool isBoundary(char a) {
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < boundarySize; i++) {
         if (boundaries[i] == a) {
             return true;
         }
@@ -98,56 +104,61 @@ inline static char *makeCharsCopy(const char *origin) {
     return copy;
 }
 
-inline static Token *processCompletedString(Token *tail, string &tmp) {
-    if (tmp != "") {
-        if (tmp[0] >= '0' && tmp[0] <= '9') {
-            Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
-            token->tokenType = TOKEN_INTEGER;
-            token->content = makeCharsCopy(tmp.c_str());
-            tail->next = token;
-            tail = token;
-//            logd(LEXER_TAG, "[+]integer:%s", tmp.c_str());
-        } else {
-            bool flag = true;
-            for (int i = 0; i < 5; i++) {
-                if (keywords[i] == tmp) {
-                    Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
-                    token->tokenType = TOKEN_KEYWORD;
-                    token->content = makeCharsCopy(tmp.c_str());
-                    tail->next = token;
-                    tail = token;
-//                    logd(LEXER_TAG, "[+]keyword:%s", tmp.c_str());
-                    flag = false;
-                }
-            }
-            for (int i = 0; i < 7; i++) {
-                if (types[i] == tmp) {
-                    Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
-                    token->tokenType = TOKEN_TYPE;
-                    token->content = makeCharsCopy(tmp.c_str());
-                    tail->next = token;
-                    tail = token;
-//                    logd(LEXER_TAG, "[+]type:%s", tmp.c_str());
-                    flag = false;
-                }
-            }
-            if (flag) {
+inline static bool strEmpty(const char *tmp) {
+    if (tmp == nullptr || strlen(tmp) == 0) {
+        return true;
+    }
+    return false;
+}
+
+inline static Token *processCompletedString(Token *tail, const char *tmp) {
+    if (strEmpty(tmp)) {
+        return tail;
+    }
+    if (tmp[0] >= '0' && tmp[0] <= '9') {
+        //integer
+        Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
+        token->tokenType = TOKEN_INTEGER;
+        token->content = makeCharsCopy(tmp);
+        tail->next = token;
+        tail = token;
+        goto finish;
+    } else {
+        for (int i = 0; i < keywordSize; i++) {
+            if (strcmp(keywords[i], tmp) == 0) {
                 Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
-                token->tokenType = TOKEN_IDENTIFIER;
-                token->content = makeCharsCopy(tmp.c_str());
+                token->tokenType = TOKEN_KEYWORD;
+                token->content = makeCharsCopy(tmp);
                 tail->next = token;
                 tail = token;
-//                logd(LEXER_TAG, "[+]identifier:%s", tmp.c_str());
+                goto finish;
             }
         }
+        for (int i = 0; i < typeSize; i++) {
+            if (strcmp(types[i], tmp) == 0) {
+                Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
+                token->tokenType = TOKEN_TYPE;
+                token->content = makeCharsCopy(tmp);
+                tail->next = token;
+                tail = token;
+                goto finish;
+            }
+        }
+        Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
+        token->tokenType = TOKEN_IDENTIFIER;
+        token->content = makeCharsCopy(tmp);
+        tail->next = token;
+        tail = token;
     }
-    tmp = "";
+    finish:
+    memset(((void *) tmp), 0, 256);
     return tail;
 }
 
-static Token *lexer(Token *tail, char *buffer) {
-    int length = strlen(buffer);
-    string tmp;
+static Token *lexer(Token *tail, const char *buffer) {
+    size_t length = strlen(buffer);
+    char tmp[256];
+    memset(((void *) tmp), 0, 256);
     for (int i = 0; i < length; i++) {
         if (buffer[i] == ' ') {
             tail = processCompletedString(tail, tmp);
@@ -163,10 +174,10 @@ static Token *lexer(Token *tail, char *buffer) {
             token->content = content;
             tail->next = token;
             tail = token;
-//            logd(LEXER_TAG, "[+]boundary:%c", buffer[i]);
         } else if (isOperator(buffer[i])) {
             tail = processCompletedString(tail, tmp);
             if (i + 1 < length && buffer[i + 1] == '=') {
+                //double operator
                 Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
                 token->tokenType = TOKEN_OPERATOR_2;
                 char *content = (char *) pccMalloc(VAR_TAG, sizeof(char) * 3);
@@ -176,9 +187,9 @@ static Token *lexer(Token *tail, char *buffer) {
                 token->content = content;
                 tail->next = token;
                 tail = token;
-//                logd(LEXER_TAG, "[+]operator:%c%c", buffer[i], buffer[i + 1]);
                 i++;
             } else {
+                //single operator
                 Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
                 token->tokenType = TOKEN_OPERATOR;
                 char *content = (char *) pccMalloc(VAR_TAG, sizeof(char) * 2);
@@ -187,7 +198,6 @@ static Token *lexer(Token *tail, char *buffer) {
                 token->content = content;
                 tail->next = token;
                 tail = token;
-//                logd(LEXER_TAG, "[+]operator:%c", buffer[i]);
             }
         } else if (isBoolOperator(buffer[i])) {
             tail = processCompletedString(tail, tmp);
@@ -201,11 +211,10 @@ static Token *lexer(Token *tail, char *buffer) {
                 token->content = content;
                 tail->next = token;
                 tail = token;
-//                logd(LEXER_TAG, "[+]bool:%c%c", buffer[i], buffer[i + 1]);
                 i++;
             }
         } else {
-            tmp += buffer[i];
+            snprintf(tmp, 256, "%s%c", tmp, buffer[i]);
         }
     }
     tail = processCompletedString(tail, tmp);
@@ -219,9 +228,8 @@ Token *buildTokens(const char *sourceFilePath) {
     Token *tokenHead = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
     tokenHead->tokenType = TOKEN_HEAD;
     Token *tokenTail = tokenHead;
-    while (fgets(buffer, BUFFER_SIZE, inputFile) != NULL) {
+    while (fgets(buffer, BUFFER_SIZE, inputFile) != nullptr) {
         trimString(buffer);
-//        logd(LEXER_TAG, "%s", buffer);
         tokenTail = lexer(tokenTail, buffer);
     }
     fclose(inputFile);

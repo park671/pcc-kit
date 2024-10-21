@@ -8,7 +8,7 @@
 
 #define OPT_TAG "optimization"
 
-bool replaceFutureUsedMir2(MirCode *currentMirCode, char *identity, MirOperand *replaceWith) {
+bool replaceFutureUsedMir2(MirCode *currentMirCode, const char *identity, MirOperand *replaceWith) {
     bool result = false;
     MirCode *mirCode = currentMirCode->nextCode;
     bool currentInLoop = false;

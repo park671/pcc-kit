@@ -10,10 +10,10 @@ static MirCode *firstMirCode;
 static MirCode *lastMirCode;
 static bool mirCodeSessionStarted = false;
 
-static char *lastCalledMethodIdentity = nullptr;
+static const char *lastCalledMethodIdentity = nullptr;
 
 struct VarNode {
-    char *identity;
+    const char *identity;
     MirOperandType operandType;
 
     VarNode *next;
@@ -21,7 +21,7 @@ struct VarNode {
 
 static VarNode *currentStackVarNodeHead = nullptr;
 
-VarNode *getVarInfo(char *identity) {
+VarNode *getVarInfo(const char *identity) {
     VarNode *pVarNode = currentStackVarNodeHead;
     while (pVarNode != nullptr) {
         if (pVarNode->identity == identity || strcmp(pVarNode->identity, identity) == 0) {
@@ -32,7 +32,7 @@ VarNode *getVarInfo(char *identity) {
     return nullptr;
 }
 
-void addVarInfo(char *identity, MirOperandType operandType) {
+void addVarInfo(const char *identity, MirOperandType operandType) {
     if (operandType < 3) {
         loge(MIR_TAG, "internal error: operand type error");
         return;
@@ -64,7 +64,7 @@ void resetVarInfo() {
 
 
 struct MethodNode {
-    char *identity;
+    const char *identity;
     MirOperandType operandType;
 
     MethodNode *next;
@@ -72,7 +72,7 @@ struct MethodNode {
 
 static MethodNode *methodNodeHead = nullptr;
 
-MethodNode *getMethodInfo(char *identity) {
+MethodNode *getMethodInfo(const char *identity) {
     MethodNode *pMethodNode = methodNodeHead;
     while (pMethodNode != nullptr) {
         if (pMethodNode->identity == identity || strcmp(pMethodNode->identity, identity) == 0) {
@@ -83,7 +83,7 @@ MethodNode *getMethodInfo(char *identity) {
     return nullptr;
 }
 
-void addMethodInfo(char *identity, MirOperandType operandType) {
+void addMethodInfo(const char *identity, MirOperandType operandType) {
     if (operandType < 3) {
         loge(MIR_TAG, "internal error: operand type error");
         return;
@@ -277,7 +277,7 @@ void printMirCode(MirCode *mirCode) {
         }
         case MIR_CMP: {
             MirCmp *mirCmp = mirCode->mirCmp;
-            char *trueLabel = mirCmp->trueLabel->label;
+            const char *trueLabel = mirCmp->trueLabel->label;
             const char *falseLabel = "nop";
             if (mirCmp->falseLabel->label != nullptr) {
                 falseLabel = mirCmp->falseLabel->label;

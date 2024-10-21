@@ -143,6 +143,7 @@ void processParams(int argc, char **argv) {
 int main(int argc, char **argv) {
     processParams(argc, argv);
     Token *tokens = buildTokens(sourceFileName);
+    printTokenStack(tokens);
     AstProgram *program = buildAst(tokens);
     releaseLexerMemory();
     Mir *mir = generateMir(program);

@@ -19,8 +19,6 @@ using namespace std;
 #define ARM_BLOCK_32_ALIGN 4
 #define ARM_BLOCK_64_ALIGN 8
 
-static int outputAssembly = 0;
-
 int alignBlockSize(int reqSize) {
     if (reqSize > ARM_BLOCK_32_ALIGN) {
         //64bit
@@ -1000,7 +998,7 @@ int computeMethodStackSize(MirMethod *mirMethod) {
         mirMethodParam = mirMethodParam->next;
     }
     //compute var size
-    vector<char *> varList;
+    vector<const char *> varList;
     MirCode *mirCode = mirMethod->code;
     while (mirCode != nullptr) {
         switch (mirCode->mirType) {
@@ -1013,8 +1011,6 @@ int computeMethodStackSize(MirMethod *mirMethod) {
                     }
                 }
                 if (!varFound) {
-                    int size = getPrimitiveMirOperandSizeInByte(mirCode->mir3->distType);
-//                    logd(ARM64_TAG, "[+] new var %s size %d", mirCode->mir3->distIdentity, size);
                     stackSizeInByte += ARM_BLOCK_64_ALIGN;
                     varList.push_back(mirCode->mir3->distIdentity);
                 }
@@ -1029,9 +1025,7 @@ int computeMethodStackSize(MirMethod *mirMethod) {
                     }
                 }
                 if (!varFound) {
-                    int size = getPrimitiveMirOperandSizeInByte(mirCode->mir2->distType);
                     stackSizeInByte += ARM_BLOCK_64_ALIGN;
-//                    logd(ARM64_TAG, "[+] new var %s size %d", mirCode->mir2->distIdentity, size);
                     varList.push_back(mirCode->mir2->distIdentity);
                 }
                 break;

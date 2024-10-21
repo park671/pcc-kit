@@ -71,4 +71,6 @@ add_executable(pcc
         generator/assembler.h
         generator/arm64/register_arm64.cpp
         generator/arm64/linux_syscall.h
+        generator/arm64/internal_func_arm64.cpp
+        generator/arm64/internal_func_arm64.h
 )

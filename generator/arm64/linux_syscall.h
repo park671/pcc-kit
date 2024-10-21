@@ -5,7 +5,7 @@
 #ifndef PCC_LINUX_SYSCALL_H
 #define PCC_LINUX_SYSCALL_H
 
-typedef enum {
+enum SysCallNumber{
     SYS_READ           = 63,
     SYS_WRITE          = 64,
     SYS_OPEN           = 56,
@@ -35,7 +35,7 @@ typedef enum {
     SYS_WAIT4          = 260,
     SYS_KILL           = 129,
     // 根据需要添加其他系统调用
-} SyscallNumber;
+};
 
 
 #endif //PCC_LINUX_SYSCALL_H

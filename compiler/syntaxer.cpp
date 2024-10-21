@@ -18,7 +18,7 @@ using namespace std;
 static stack<vector<AstIdentity *> *> varList;
 static vector<AstMethodDefine *> methodList;
 
-inline static bool hasVarDefine(char *name) {
+inline static bool hasVarDefine(const char *name) {
     vector<AstIdentity *> *currentMethodStack = varList.top();
     for (int i = 0; i < currentMethodStack->size(); i++) {
         if (strcmp((*currentMethodStack)[i]->name, name) == 0) {
@@ -28,7 +28,7 @@ inline static bool hasVarDefine(char *name) {
     return false;
 }
 
-inline static bool hasMethodDefine(char *name) {
+inline static bool hasMethodDefine(const char *name) {
     for (int i = 0; i < methodList.size(); i++) {
         if (strcmp(methodList[i]->identity->name, name) == 0) {
             return true;
@@ -37,7 +37,7 @@ inline static bool hasMethodDefine(char *name) {
     return false;
 }
 
-inline static AstMethodDefine *getMethodDefine(char *name) {
+inline static AstMethodDefine *getMethodDefine(const char *name) {
     for (int i = 0; i < methodList.size(); i++) {
         if (strcmp(methodList[i]->identity->name, name) == 0) {
             return methodList[i];
@@ -62,7 +62,7 @@ inline static void addVar(AstIdentity *astIdentity) {
     varList.top()->push_back(astIdentity);
 }
 
-inline static PrimitiveType convertTokenType2PrimitiveType(char *type) {
+inline static PrimitiveType convertTokenType2PrimitiveType(const char *type) {
     if (strcmp(type, "char") == 0) {
         return TYPE_CHAR;
     } else if (strcmp(type, "short") == 0) {

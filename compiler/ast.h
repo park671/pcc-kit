@@ -80,7 +80,7 @@ struct AstType {
 };
 
 struct AstIdentity {
-    char *name;
+    const char *name;
 };
 
 struct AstParamDefine {

@@ -13,6 +13,7 @@ enum TokenType {
     TOKEN_BOOL,
     TOKEN_INTEGER,
     TOKEN_FLOAT,
+    TOKEN_CHARS,
     TOKEN_KEYWORD,
     TOKEN_TYPE,
     TOKEN_IDENTIFIER
@@ -20,10 +21,8 @@ enum TokenType {
 
 struct Token {
     TokenType tokenType;
-    char *content;
+    const char *content;
     Token *next;
 };
-
-char *getTokenTypeName(TokenType tokenType);
 
 #endif //PCC_CC_TOKEN_H
