@@ -93,7 +93,9 @@ enum MirOperandType {
     OPERAND_INT64,
 
     OPERAND_FLOAT32,
-    OPERAND_FLOAT64
+    OPERAND_FLOAT64,
+
+    OPERAND_POINTER
 };
 
 struct MirOperand {

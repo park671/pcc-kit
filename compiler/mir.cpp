@@ -182,7 +182,11 @@ static const char *convertBoolOpString(MirBooleanOperator mirBooleanOperator) {
 }
 
 
-MirOperandType convertAstType2MirType(PrimitiveType primitiveType) {
+MirOperandType convertAstType2MirType(AstType *retType) {
+    if (retType->isPointer) {
+        return OPERAND_POINTER;
+    }
+    PrimitiveType primitiveType = retType->primitiveType;
     switch (primitiveType) {
         case TYPE_CHAR: {
             return OPERAND_INT8;
@@ -1034,7 +1038,7 @@ void generateParam(AstParamList *astParamList, MirMethod *mirMethod) {
             }
         }
         addVarInfo(mirMethodParam->paramName,
-                   convertAstType2MirType(curAstParamList->paramDefine->type->primitiveType));
+                   convertAstType2MirType(curAstParamList->paramDefine->type));
 
         curAstParamList = curAstParamList->next;
     }
@@ -1050,7 +1054,7 @@ void generateParam(AstParamList *astParamList, MirMethod *mirMethod) {
 void generateMethod(AstMethodDefine *astMethodDefine, MirMethod *mirMethod) {
     mirMethod->label = astMethodDefine->identity->name;
 //    logd(MIR_TAG, "--- mir method:%s", mirMethod->label);
-    addMethodInfo(astMethodDefine->identity->name, convertAstType2MirType(astMethodDefine->type->primitiveType));
+    addMethodInfo(astMethodDefine->identity->name, convertAstType2MirType(astMethodDefine->type));
     if (astMethodDefine->paramList != nullptr) {
         //var in method params need stack
         generateParam(astMethodDefine->paramList, mirMethod);

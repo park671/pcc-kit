@@ -5,6 +5,8 @@
 #ifndef PCC_CC_AST_H
 #define PCC_CC_AST_H
 
+#include "stdint.h"
+
 enum PrimitiveType {
     TYPE_UNKNOWN,
 
@@ -72,15 +74,30 @@ enum ArithmeticFactorType {
 
 enum ExpressionType {
     EXPRESSION_ASSIGNMENT,
-    EXPRESSION_ARITHMETIC
+    EXPRESSION_ARITHMETIC,
+    EXPRESSION_POINTER,
 };
 
 struct AstType {
+    bool isPointer;
     PrimitiveType primitiveType;
 };
 
+enum IdentityType {
+    ID_METHOD,
+    ID_VAR,
+    ID_ARRAY,
+};
+
 struct AstIdentity {
+    IdentityType type;
     const char *name;
+};
+
+struct AstArray {
+    PrimitiveType primitiveType;
+    int size;
+    void *buffer;
 };
 
 struct AstParamDefine {
@@ -171,6 +188,28 @@ struct AstExpressionArithmetic {
 
 struct AstExpression;
 
+enum ExpressionPointerType {
+    EXP_POINTER_CALC,
+    EXP_POINTER_ARRAY,
+};
+
+struct AstExpressionPointerCalc {
+    //&
+    AstIdentity *identity;
+};
+
+struct AstExpressionPointerArray {
+    AstArray *array;
+};
+
+struct AstExpressionPointer {
+    ExpressionPointerType type;
+    union {
+        AstExpressionPointerCalc *pointerCalc;
+        AstExpressionPointerArray *pointerArray;
+    };
+};
+
 struct AstExpressionAssignment {
     AstIdentity *identity;
     //=
@@ -182,6 +221,7 @@ struct AstExpression {
     union {
         AstExpressionAssignment *assignmentExpression;
         AstExpressionArithmetic *arithmeticExpression;
+        AstExpressionPointer *pointerExpression;
     };
 };
 
@@ -200,7 +240,7 @@ struct AstStatementDefine {
 };
 
 struct AstStatementMethodCall {
-    PrimitiveType retType;
+    AstType *retType;
     AstIdentity *identity;
     //(
     AstObjectList *objectList;
@@ -320,6 +360,7 @@ enum AstNodeType {
     NODE_STATEMENT_METHOD_CALL,
     NODE_OBJECT_LIST,
     NODE_EXPRESSION,
+    NODE_EXPRESSION_POINTER,
     NODE_EXPRESSION_ASSIGNMENT,
     NODE_EXPRESSION_ARITHMETIC,
     NODE_EXPRESSION_ARITHMETIC_MORE,

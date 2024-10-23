@@ -52,8 +52,10 @@ const char *getTokenTypeName(TokenType tokenType) {
             return "bool";
         case TOKEN_CHARS:
             return "chars";
-        case TOKEN_POINTER:
+        case TOKEN_POINTER_TYPE:
             return "pointer";
+        case TOKEN_POINTER_OPERATOR:
+            return "pointer_op";
     }
     return "unknown";
 }
@@ -113,6 +115,10 @@ inline static bool isEscape(char a) {
 
 inline static bool isPointer(char a) {
     return a == '*';
+}
+
+inline static bool isGetAddress(char a) {
+    return a == '&';
 }
 
 inline static char *makeCharsCopy(const char *origin) {
@@ -206,7 +212,18 @@ static Token *lexer(Token *tail, const char *buffer) {
             continue;
         } else if (isPointer(buffer[i])) {
             if (tail->tokenType == TOKEN_TYPE) {
-                tail->tokenType = TOKEN_POINTER;
+                tail->tokenType = TOKEN_POINTER_TYPE;
+                continue;
+            } else {
+                tail = processCompletedString(tail, tmp);
+                Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
+                token->tokenType = TOKEN_POINTER_OPERATOR;
+                char *content = (char *) pccMalloc(VAR_TAG, sizeof(char) * 2);
+                content[0] = buffer[i];
+                content[1] = '\0';
+                token->content = content;
+                tail->next = token;
+                tail = token;
                 continue;
             }
         } else if (isBoundary(buffer[i])) {
@@ -244,20 +261,30 @@ static Token *lexer(Token *tail, const char *buffer) {
                 tail->next = token;
                 tail = token;
             }
-        } else if (isBoolOperator(buffer[i])) {
+        } else if (isBoolOperator(buffer[i])
+                   && i + 1 < length
+                   && buffer[i + 1] == buffer[i]) {
             tail = processCompletedString(tail, tmp);
-            if (i + 1 < length && buffer[i + 1] == buffer[i]) {
-                Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
-                token->tokenType = TOKEN_BOOL;
-                char *content = (char *) pccMalloc(VAR_TAG, sizeof(char) * 3);
-                content[0] = buffer[i];
-                content[1] = buffer[i + 1];
-                content[2] = '\0';
-                token->content = content;
-                tail->next = token;
-                tail = token;
-                i++;
-            }
+            Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
+            token->tokenType = TOKEN_BOOL;
+            char *content = (char *) pccMalloc(VAR_TAG, sizeof(char) * 3);
+            content[0] = buffer[i];
+            content[1] = buffer[i + 1];
+            content[2] = '\0';
+            token->content = content;
+            tail->next = token;
+            tail = token;
+            i++;
+        } else if (isGetAddress(buffer[i])) {
+            tail = processCompletedString(tail, tmp);
+            Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
+            token->tokenType = TOKEN_POINTER_OPERATOR;
+            char *content = (char *) pccMalloc(VAR_TAG, sizeof(char) * 2);
+            content[0] = buffer[i];
+            content[1] = '\0';
+            token->content = content;
+            tail->next = token;
+            tail = token;
         } else {
             snprintf(tmp, 256, "%s%c", tmp, buffer[i]);
         }

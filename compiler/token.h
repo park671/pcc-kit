@@ -10,13 +10,15 @@ enum TokenType {
     TOKEN_BOUNDARY,
     TOKEN_OPERATOR,
     TOKEN_OPERATOR_2,
+    TOKEN_POINTER_OPERATOR,//* &
     TOKEN_BOOL,
     TOKEN_INTEGER,
     TOKEN_FLOAT,
     TOKEN_CHARS,
+    TOKEN_ARRAY,//todo: impl this
     TOKEN_KEYWORD,
     TOKEN_TYPE,
-    TOKEN_POINTER,
+    TOKEN_POINTER_TYPE,//field same to type, but means this type's pointer
     TOKEN_IDENTIFIER
 };
 

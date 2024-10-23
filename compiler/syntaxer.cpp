@@ -108,11 +108,12 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
         case NODE_METHOD_DEFINE: {
             AstMethodDefine *astMethodDefine = (AstMethodDefine *) currentNode;
             //method type
-            if (token->tokenType != TOKEN_TYPE) {
+            if (token->tokenType != TOKEN_TYPE && token->tokenType != TOKEN_POINTER_TYPE) {
                 loge(SYNTAX_TAG, "[-]error: method define need type: %s", token->content);
                 return nullptr;
             }
             astMethodDefine->type = (AstType *) pccMalloc(SYNTAX_TAG, sizeof(AstType));
+            astMethodDefine->type->isPointer = (token->tokenType == TOKEN_POINTER_TYPE);
             astMethodDefine->type->primitiveType = convertTokenType2PrimitiveType(token->content);
             token = token->next;
             //method name
@@ -122,6 +123,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             }
             astMethodDefine->identity = (AstIdentity *) pccMalloc(SYNTAX_TAG, sizeof(AstIdentity));
             astMethodDefine->identity->name = token->content;
+            astMethodDefine->identity->type = ID_METHOD;
             token = token->next;
             //method (
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, "(") != 0) {
@@ -165,12 +167,13 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
         }
         case NODE_PARAM_DEFINE: {
             AstParamDefine *astParamDefine = (AstParamDefine *) currentNode;
-            if (token->tokenType != TOKEN_TYPE) {
+            if (token->tokenType != TOKEN_TYPE && token->tokenType != TOKEN_POINTER_TYPE) {
                 loge(SYNTAX_TAG, "[-]error: param define need type: %s", token->content);
                 return nullptr;
             }
             astParamDefine->type = (AstType *) pccMalloc(SYNTAX_TAG, sizeof(AstType));
             astParamDefine->type->primitiveType = convertTokenType2PrimitiveType(token->content);
+            astParamDefine->type->isPointer = (token->tokenType == TOKEN_POINTER_TYPE);
             token = token->next;
             if (token->tokenType != TOKEN_IDENTIFIER) {
                 loge(SYNTAX_TAG, "[-]error: param define need identifier: %s", token->content);
@@ -178,6 +181,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             }
             astParamDefine->identity = (AstIdentity *) pccMalloc(SYNTAX_TAG, sizeof(AstIdentity));
             astParamDefine->identity->name = token->content;
+            astParamDefine->identity->type = ID_VAR;
             addVar(astParamDefine->identity);
             token = token->next;
             break;
@@ -247,12 +251,13 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                     token = token->next;
                     token = travelAst(token, astStatement->forStatement, NODE_STATEMENT_RETURN);
                 }
-            } else if (token->tokenType == TOKEN_TYPE) {
+            } else if (token->tokenType == TOKEN_TYPE || token->tokenType == TOKEN_POINTER_TYPE) {
                 astStatement->statementType = STATEMENT_DEFINE;
                 astStatement->defineStatement = (AstStatementDefine *) pccMalloc(SYNTAX_TAG,
                                                                                  sizeof(AstStatementDefine));
                 astStatement->defineStatement->type = (AstType *) pccMalloc(SYNTAX_TAG, sizeof(AstType));
                 astStatement->defineStatement->type->primitiveType = convertTokenType2PrimitiveType(token->content);
+                astStatement->defineStatement->type->isPointer = (token->tokenType == TOKEN_POINTER_TYPE);
                 token = token->next;
                 if (token->tokenType != TOKEN_IDENTIFIER) {
                     loge(SYNTAX_TAG, "[-]error: var define need identifier: %s", token->content);
@@ -338,12 +343,21 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                     loge(SYNTAX_TAG, "[-]error: undefined var: %s", token->content);
                 }
                 break;
+            } else if(token->tokenType == TOKEN_POINTER_OPERATOR || token->tokenType == TOKEN_CHARS) {
+                astExpression->expressionType = EXPRESSION_POINTER;
+                astExpression->pointerExpression = (AstExpressionPointer *) pccMalloc(SYNTAX_TAG,
+                                                                                            sizeof(AstExpressionPointer));
+                token = travelAst(token, astExpression->pointerExpression, NODE_EXPRESSION_POINTER);
             } else {
                 astExpression->expressionType = EXPRESSION_ARITHMETIC;
                 astExpression->arithmeticExpression = (AstExpressionArithmetic *) pccMalloc(SYNTAX_TAG,
                                                                                             sizeof(AstExpressionArithmetic));
                 token = travelAst(token, astExpression->arithmeticExpression, NODE_EXPRESSION_ARITHMETIC);
             }
+            break;
+        }
+        case NODE_EXPRESSION_POINTER: {
+
             break;
         }
         case NODE_EXPRESSION_ASSIGNMENT: {
@@ -641,6 +655,9 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             } else if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, "(")) {
                 loge(SYNTAX_TAG, "[-]error: not impl yet: %s", token->content);
                 return nullptr;
+            } else if (token->tokenType == TOKEN_CHARS) {
+                loge(SYNTAX_TAG, "[-]error: not impl yet: %s", token->content);
+                return nullptr;
             } else {
                 loge(SYNTAX_TAG, "[-]error: except valid identifier or num: %s", token->content);
                 return nullptr;
@@ -659,7 +676,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                      astStatementMethodCall->identity->name);
                 exit(1);
             }
-            astStatementMethodCall->retType = methodDefine->type->primitiveType;
+            astStatementMethodCall->retType = methodDefine->type;
             //check next token
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, "(") != 0) {
                 loge(SYNTAX_TAG, "[-]error: method call need (: %s", token->content);
