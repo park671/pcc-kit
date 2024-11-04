@@ -63,19 +63,17 @@ enum BoolFactorType {
 
 enum ArithmeticFactorType {
     ARITHMETIC_IDENTITY,
+    ARITHMETIC_ADR_P,
+    ARITHMETIC_DREF_P,
     ARITHMETIC_METHOD_RET,//函数的返回值
-    ARITHMETIC_CHAR,
-    ARITHMETIC_INT,
-    ARITHMETIC_SHORT,
-    ARITHMETIC_LONG,
-    ARITHMETIC_FLOAT,
-    ARITHMETIC_DOUBLE,
+    ARITHMETIC_PRIMITIVE,
+    //init with array
+    ARITHMETIC_ARRAY,//string is char array.
 };
 
 enum ExpressionType {
     EXPRESSION_ASSIGNMENT,
-    EXPRESSION_ARITHMETIC,
-    EXPRESSION_POINTER,
+    EXPRESSION_ARITHMETIC
 };
 
 struct AstType {
@@ -92,12 +90,6 @@ enum IdentityType {
 struct AstIdentity {
     IdentityType type;
     const char *name;
-};
-
-struct AstArray {
-    PrimitiveType primitiveType;
-    int size;
-    void *buffer;
 };
 
 struct AstParamDefine {
@@ -145,6 +137,24 @@ struct AstExpressionBool {
     AstExpressionBool *next;//nullable, must be ||
 };
 
+struct AstPrimitiveData {
+    PrimitiveType type;
+    union {
+        char dataChar;
+        short dataShort;
+        int dataInt;
+        long dataLong;
+
+        float dataFloat;
+        double dataDouble;
+    };
+};
+
+struct AstArrayData {
+    AstPrimitiveData data;
+    AstArrayData *next;//nullable
+};
+
 struct AstStatementMethodCall;
 
 struct AstArithmeticFactor {
@@ -152,6 +162,8 @@ struct AstArithmeticFactor {
     union {
         AstIdentity *identity;
         AstStatementMethodCall *methodCall;
+        AstArrayData *array;
+        AstPrimitiveData *primitiveData;
         char dataChar;
         short dataShort;
         int dataInt;
@@ -188,28 +200,6 @@ struct AstExpressionArithmetic {
 
 struct AstExpression;
 
-enum ExpressionPointerType {
-    EXP_POINTER_CALC,
-    EXP_POINTER_ARRAY,
-};
-
-struct AstExpressionPointerCalc {
-    //&
-    AstIdentity *identity;
-};
-
-struct AstExpressionPointerArray {
-    AstArray *array;
-};
-
-struct AstExpressionPointer {
-    ExpressionPointerType type;
-    union {
-        AstExpressionPointerCalc *pointerCalc;
-        AstExpressionPointerArray *pointerArray;
-    };
-};
-
 struct AstExpressionAssignment {
     AstIdentity *identity;
     //=
@@ -221,7 +211,6 @@ struct AstExpression {
     union {
         AstExpressionAssignment *assignmentExpression;
         AstExpressionArithmetic *arithmeticExpression;
-        AstExpressionPointer *pointerExpression;
     };
 };
 
@@ -360,13 +349,14 @@ enum AstNodeType {
     NODE_STATEMENT_METHOD_CALL,
     NODE_OBJECT_LIST,
     NODE_EXPRESSION,
-    NODE_EXPRESSION_POINTER,
     NODE_EXPRESSION_ASSIGNMENT,
     NODE_EXPRESSION_ARITHMETIC,
     NODE_EXPRESSION_ARITHMETIC_MORE,
     NODE_ARITHMETIC_ITEM,
     NODE_ARITHMETIC_ITEM_MORE,
     NODE_ARITHMETIC_FACTOR,
+    NODE_ARRAY_DATA,
+    NODE_PRIMITIVE_DATA,
     NODE_EXPRESSION_BOOL,
     NODE_BOOL_ITEM,
     NODE_BOOL_FACTOR,

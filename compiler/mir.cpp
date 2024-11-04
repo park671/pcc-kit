@@ -446,34 +446,50 @@ void generateArithmeticFactor(AstArithmeticFactor *arithmeticFactor, MirOperand 
             mirOperand->identity = arithmeticFactor->identity->name;
             break;
         }
-        case ARITHMETIC_CHAR: {
-            mirOperand->type = OPERAND_INT8;
-            mirOperand->dataInt8 = arithmeticFactor->dataChar;
-            break;
-        }
-        case ARITHMETIC_SHORT: {
-            mirOperand->type = OPERAND_INT16;
-            mirOperand->dataInt16 = arithmeticFactor->dataShort;
-            break;
-        }
-        case ARITHMETIC_INT: {
-            mirOperand->type = OPERAND_INT32;
-            mirOperand->dataInt32 = arithmeticFactor->dataInt;
-            break;
-        }
-        case ARITHMETIC_LONG: {
-            mirOperand->type = OPERAND_INT64;
-            mirOperand->dataInt64 = arithmeticFactor->dataLong;
-            break;
-        }
-        case ARITHMETIC_FLOAT: {
-            mirOperand->type = OPERAND_FLOAT32;
-            mirOperand->dataFloat32 = arithmeticFactor->dataFloat;
-            break;
-        }
-        case ARITHMETIC_DOUBLE: {
-            mirOperand->type = OPERAND_FLOAT64;
-            mirOperand->dataFloat64 = arithmeticFactor->dataDouble;
+        case ARITHMETIC_PRIMITIVE: {
+            AstPrimitiveData *primitiveData = arithmeticFactor->primitiveData;
+            switch (primitiveData->type) {
+                case TYPE_CHAR: {
+                    mirOperand->type = OPERAND_INT8;
+                    mirOperand->dataInt8 = primitiveData->dataChar;
+                    break;
+                }
+                case TYPE_SHORT: {
+                    mirOperand->type = OPERAND_INT16;
+                    mirOperand->dataInt16 = primitiveData->dataShort;
+                    break;
+                }
+                case TYPE_INT: {
+                    mirOperand->type = OPERAND_INT32;
+                    mirOperand->dataInt32 = primitiveData->dataInt;
+                    break;
+                }
+                case TYPE_LONG: {
+                    mirOperand->type = OPERAND_INT64;
+                    mirOperand->dataInt64 = primitiveData->dataLong;
+                    break;
+                }
+                case TYPE_FLOAT: {
+                    mirOperand->type = OPERAND_FLOAT32;
+                    mirOperand->dataFloat32 = primitiveData->dataFloat;
+                    break;
+                }
+                case TYPE_DOUBLE: {
+                    mirOperand->type = OPERAND_FLOAT64;
+                    mirOperand->dataFloat64 = primitiveData->dataDouble;
+                    break;
+                }
+                case TYPE_VOID: {
+                    logd(MIR_TAG, "[-] what type void?");
+                    mirOperand->type = OPERAND_VOID;
+                    break;
+                }
+                case TYPE_UNKNOWN:
+                default: {
+                    loge(MIR_TAG, "unknown primitive type.");
+                    exit(-1);
+                }
+            }
             break;
         }
         case ARITHMETIC_METHOD_RET: {
