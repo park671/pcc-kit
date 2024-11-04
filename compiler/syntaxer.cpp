@@ -278,7 +278,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                                                                                         sizeof(AstExpression));
                 token = travelAst(token, astStatement->defineStatement->expression, NODE_EXPRESSION);
                 if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ";") != 0) {
-                    loge(SYNTAX_TAG, "[-]error: need ;: %s", token->content);
+                    loge(SYNTAX_TAG, "[-]error: define need ;: %s", token->content);
                     exit(1);
                 }
                 //consume ;
@@ -343,21 +343,12 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                     loge(SYNTAX_TAG, "[-]error: undefined var: %s", token->content);
                 }
                 break;
-            } else if(token->tokenType == TOKEN_POINTER_OPERATOR || token->tokenType == TOKEN_CHARS) {
-                astExpression->expressionType = EXPRESSION_POINTER;
-                astExpression->pointerExpression = (AstExpressionPointer *) pccMalloc(SYNTAX_TAG,
-                                                                                            sizeof(AstExpressionPointer));
-                token = travelAst(token, astExpression->pointerExpression, NODE_EXPRESSION_POINTER);
             } else {
                 astExpression->expressionType = EXPRESSION_ARITHMETIC;
                 astExpression->arithmeticExpression = (AstExpressionArithmetic *) pccMalloc(SYNTAX_TAG,
                                                                                             sizeof(AstExpressionArithmetic));
                 token = travelAst(token, astExpression->arithmeticExpression, NODE_EXPRESSION_ARITHMETIC);
             }
-            break;
-        }
-        case NODE_EXPRESSION_POINTER: {
-
             break;
         }
         case NODE_EXPRESSION_ASSIGNMENT: {
@@ -453,7 +444,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 token = travelAst(token, astStatementFor->initExpression, NODE_EXPRESSION);
             }
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ";") != 0) {
-                loge(SYNTAX_TAG, "[-]error: need ;: %s", token->content);
+                loge(SYNTAX_TAG, "[-]error: for 1st need ;: %s", token->content);
                 return nullptr;
             }
             //consume ;
@@ -466,7 +457,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 token = travelAst(token, astStatementFor->controlExpression, NODE_EXPRESSION_BOOL);
             }
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ";") != 0) {
-                loge(SYNTAX_TAG, "[-]error: need ;: %s", token->content);
+                loge(SYNTAX_TAG, "[-]error: for 2nd need ;: %s", token->content);
                 return nullptr;
             }
             //consume ;
@@ -498,7 +489,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 token = travelAst(token, astStatementReturn->expression, NODE_EXPRESSION);
             }
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ";") != 0) {
-                loge(SYNTAX_TAG, "[-]error: need ;: %s", token->content);
+                loge(SYNTAX_TAG, "[-]error: return need ;: %s", token->content);
                 return nullptr;
             }
             //consume ;
@@ -627,41 +618,125 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                         return nullptr;
                     }
                 }
-            } else if (token->tokenType == TOKEN_INTEGER) {
-                char *consumedCharsPtr;
-                long num = strtol(token->content, &consumedCharsPtr, 10);
-                if (consumedCharsPtr == token->content) {
-                    loge(SYNTAX_TAG, "[-]error: can not convert int: %s", token->content);
-                    return nullptr;
-                }
-                if (num <= CHAR_MAX) {
-                    astArithmeticFactor->factorType = ARITHMETIC_CHAR;
-                    astArithmeticFactor->dataChar = (char) num;
-                } else if (num <= SHRT_MAX) {
-                    astArithmeticFactor->factorType = ARITHMETIC_SHORT;
-                    astArithmeticFactor->dataShort = (short) num;
-                } else if (num <= INT_MAX) {
-                    astArithmeticFactor->factorType = ARITHMETIC_INT;
-                    astArithmeticFactor->dataInt = (int) num;
-                } else if (num <= LONG_MAX) {
-                    astArithmeticFactor->factorType = ARITHMETIC_LONG;
-                    astArithmeticFactor->dataLong = (long) num;
-                } else {
-                    loge(SYNTAX_TAG, "[-]error: int out of range: %s", token->content);
-                    return nullptr;
-                }
-                //consume integer
+            } else if (token->tokenType == TOKEN_INTEGER || token->tokenType == TOKEN_FLOAT) {
+                astArithmeticFactor->factorType = ARITHMETIC_PRIMITIVE;
+                astArithmeticFactor->primitiveData = (AstPrimitiveData *) pccMalloc(SYNTAX_TAG, sizeof(AstPrimitiveData));
+                token = travelAst(token, astArithmeticFactor->primitiveData, NODE_PRIMITIVE_DATA);
+            } else if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, "(") == 0) {
+                loge(SYNTAX_TAG, "[-]error: not impl yet: %s", token->content);
+                return nullptr;
+            } else if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, "{") == 0) {
+                //array, consume {
                 token = token->next;
-            } else if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, "(")) {
-                loge(SYNTAX_TAG, "[-]error: not impl yet: %s", token->content);
-                return nullptr;
+                astArithmeticFactor->factorType = ARITHMETIC_ARRAY;
+                astArithmeticFactor->array = (AstArrayData *) pccMalloc(SYNTAX_TAG, sizeof(AstArrayData));
+                token = travelAst(token, astArithmeticFactor->array, NODE_ARRAY_DATA);
+                if (strcmp(token->content, "}") != 0) {
+                    loge(SYNTAX_TAG, "[-] array need \"}\" to finish");
+                    exit(-1);
+                }
+                token = token->next;
             } else if (token->tokenType == TOKEN_CHARS) {
-                loge(SYNTAX_TAG, "[-]error: not impl yet: %s", token->content);
+                astArithmeticFactor->factorType = ARITHMETIC_ARRAY;
+                astArithmeticFactor->array = (AstArrayData *) pccMalloc(SYNTAX_TAG, sizeof(AstArrayData));
+                const char *contentData = token->content;
+                int contentLength = strlen(contentData);
+                AstArrayData* array = astArithmeticFactor->array;
+                for (int i = 0; i < contentLength; i++) {
+                    char dataChar = contentData[i];
+                    array->data.type = TYPE_CHAR;
+                    array->data.dataChar = dataChar;
+                    if (i == contentLength - 1) {
+                        array->next = nullptr;
+                    } else {
+                        array->next = (AstArrayData*)pccMalloc(SYNTAX_TAG, sizeof(AstArrayData));
+                    }
+                }
+                //consume this string
+                token = token->next;
+            } else if (token->tokenType == TOKEN_CHARS) {
+                astArithmeticFactor->factorType = ARITHMETIC_ARRAY;
+                // consume this point op
+                token = token->next;
+                astArithmeticFactor->identity = (AstIdentity *) pccMalloc(SYNTAX_TAG, sizeof(AstIdentity));
+                astArithmeticFactor->identity->name = token->content;
+                token = token->next;
                 return nullptr;
+            } else if (token->tokenType == TOKEN_POINTER_OPERATOR) {
+                if (strcmp(token->content, "&") == 0) {
+                    //get address for identity
+                    astArithmeticFactor->factorType = ARITHMETIC_ADR_P;
+                } else if (strcmp(token->content, "*") == 0) {
+                    //dereference from address
+                    astArithmeticFactor->factorType = ARITHMETIC_DREF_P;
+                }
+                // consume this point op
+                token = token->next;
+                astArithmeticFactor->identity = (AstIdentity *) pccMalloc(SYNTAX_TAG, sizeof(AstIdentity));
+                astArithmeticFactor->identity->name = token->content;
+                token = token->next;
             } else {
                 loge(SYNTAX_TAG, "[-]error: except valid identifier or num: %s", token->content);
                 return nullptr;
             }
+            break;
+        }
+        case NODE_ARRAY_DATA: {
+            AstArrayData* astArrayData = (AstArrayData*) currentNode;
+            token = travelAst(token, &astArrayData->data, NODE_PRIMITIVE_DATA);
+            if (strcmp(token->content, ",") != 0) {
+                //consume ,
+                token = token->next;
+                astArrayData->next = (AstArrayData*) pccMalloc(SYNTAX_TAG, sizeof(AstArrayData));
+                token = travelAst(token, astArrayData->next, NODE_ARRAY_DATA);
+            } else {
+                astArrayData->next = nullptr;
+            }
+            break;
+        }
+        case NODE_PRIMITIVE_DATA: {
+            AstPrimitiveData* astPrimitiveData = (AstPrimitiveData*) currentNode;
+
+            char *consumedCharsPtr;
+            if (token->tokenType == TOKEN_INTEGER) {
+                long num = strtol(token->content, &consumedCharsPtr, 10);
+                if (consumedCharsPtr == token->content) {
+                    loge(SYNTAX_TAG, "[-]error: can not convert int: %s", token->content);
+                    exit(-1);
+                }
+                if (num <= CHAR_MAX) {
+                    astPrimitiveData->type = TYPE_CHAR;
+                    astPrimitiveData->dataChar = (char) num;
+                } else if (num <= SHRT_MAX) {
+                    astPrimitiveData->type = TYPE_SHORT;
+                    astPrimitiveData->dataChar = (short) num;
+                } else if (num <= INT_MAX) {
+                    astPrimitiveData->type = TYPE_INT;
+                    astPrimitiveData->dataChar = (int) num;
+                } else if (num <= LONG_MAX) {
+                    astPrimitiveData->type = TYPE_LONG;
+                    astPrimitiveData->dataChar = (long) num;
+                } else {
+                    loge(SYNTAX_TAG, "[-]error: int out of range: %s", token->content);
+                    exit(-1);
+                }
+            } else if (token->tokenType == TOKEN_FLOAT) {
+                double num = strtod(token->content, &consumedCharsPtr);
+                if (consumedCharsPtr == token->content) {
+                    loge(SYNTAX_TAG, "[-]error: can not convert int: %s", token->content);
+                    exit(-1);
+                }
+                //todo: pass the float width to here.
+                if (true) {
+                    astPrimitiveData->type = TYPE_DOUBLE;
+                    astPrimitiveData->dataFloat = num;
+                } else {
+                    astPrimitiveData->type = TYPE_DOUBLE;
+                    astPrimitiveData->dataDouble = num;
+                }
+            }
+            //consume integer or float
+            token = token->next;
             break;
         }
         case NODE_STATEMENT_METHOD_CALL: {
@@ -697,7 +772,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             //consume )
             token = token->next;
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ";") != 0) {
-                loge(SYNTAX_TAG, "[-]error: need ;: %s", token->content);
+                loge(SYNTAX_TAG, "[-]error: method call need ;: %s", token->content);
             }
             //DO NOT consume ;
             break;
