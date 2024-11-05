@@ -97,14 +97,14 @@ enum MirOperandPrimitiveType {
     OPERAND_P,
 };
 
-struct MirOperandTypeWrapper {
-    MirOperandPrimitiveType primitiveType;
-    bool isPointer;
-    bool isReturn;
+struct MirOperandType {
+    MirOperandPrimitiveType primitiveType = OPERAND_UNKNOWN;
+    bool isPointer = false;
+    bool isReturn = false;
 };
 
 struct MirOperand {
-    MirOperandTypeWrapper type;
+    MirOperandType type;
     union {
         const char *identity;
 
@@ -133,7 +133,7 @@ enum MirOperator {
 };
 
 struct Mir3 {
-    MirOperandTypeWrapper distType;
+    MirOperandType distType;
     const char *distIdentity;
     MirOperand value1;
     MirOperator op;
@@ -141,7 +141,7 @@ struct Mir3 {
 };
 
 struct Mir2 {
-    MirOperandTypeWrapper distType;
+    MirOperandType distType;
     const char *distIdentity;
     MirOperator op;
     MirOperand fromValue;
@@ -185,7 +185,7 @@ struct MirCall {
 };
 
 struct MirData {
-    MirOperandTypeWrapper type;
+    MirOperandType type;
     const char *label;
     int line;
     void *data;

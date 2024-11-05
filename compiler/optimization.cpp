@@ -58,7 +58,7 @@ bool replaceFutureUsedMir2(MirCode *currentMirCode, const char *identity, MirOpe
 
         if (mirCode->mirType == MIR_2) {
             Mir2 *mir2 = mirCode->mir2;
-            if (mir2->fromValue.type == OPERAND_IDENTITY && strcmp(mir2->fromValue.identity, identity) == 0) {
+            if (mir2->fromValue.type.primitiveType == OPERAND_IDENTITY && strcmp(mir2->fromValue.identity, identity) == 0) {
                 mir2->fromValue = *replaceWith;
                 result = true;
             }
@@ -67,11 +67,11 @@ bool replaceFutureUsedMir2(MirCode *currentMirCode, const char *identity, MirOpe
             }
         } else if (mirCode->mirType == MIR_3) {
             Mir3 *mir3 = mirCode->mir3;
-            if (mir3->value1.type == OPERAND_IDENTITY && strcmp(mir3->value1.identity, identity) == 0) {
+            if (mir3->value1.type.primitiveType == OPERAND_IDENTITY && strcmp(mir3->value1.identity, identity) == 0) {
                 mir3->value1 = *replaceWith;
                 result = true;
             }
-            if (mir3->value2.type == OPERAND_IDENTITY && strcmp(mir3->value2.identity, identity) == 0) {
+            if (mir3->value2.type.primitiveType == OPERAND_IDENTITY && strcmp(mir3->value2.identity, identity) == 0) {
                 mir3->value2 = *replaceWith;
                 result = true;
             }
@@ -81,18 +81,18 @@ bool replaceFutureUsedMir2(MirCode *currentMirCode, const char *identity, MirOpe
         } else if (mirCode->mirType == MIR_RET) {
             MirRet *mirRet = mirCode->mirRet;
             if (mirRet->value != nullptr) {
-                if (mirRet->value->type == OPERAND_IDENTITY && strcmp(mirRet->value->identity, identity) == 0) {
+                if (mirRet->value->type.primitiveType == OPERAND_IDENTITY && strcmp(mirRet->value->identity, identity) == 0) {
                     mirRet->value = replaceWith;
                     result = true;
                 }
             }
         } else if (mirCode->mirType == MIR_CMP) {
             MirCmp *mirCmp = mirCode->mirCmp;
-            if (mirCmp->value1.type == OPERAND_IDENTITY && strcmp(mirCmp->value1.identity, identity) == 0) {
+            if (mirCmp->value1.type.primitiveType == OPERAND_IDENTITY && strcmp(mirCmp->value1.identity, identity) == 0) {
                 mirCmp->value1 = *replaceWith;
                 result = true;
             }
-            if (mirCmp->value2.type == OPERAND_IDENTITY && strcmp(mirCmp->value2.identity, identity) == 0) {
+            if (mirCmp->value2.type.primitiveType == OPERAND_IDENTITY && strcmp(mirCmp->value2.identity, identity) == 0) {
                 mirCmp->value2 = *replaceWith;
                 result = true;
             }
@@ -100,7 +100,7 @@ bool replaceFutureUsedMir2(MirCode *currentMirCode, const char *identity, MirOpe
             MirCall *mirCall = mirCode->mirCall;
             MirObjectList *mirObjectList = mirCall->mirObjectList;
             while (mirObjectList != nullptr) {
-                if (mirObjectList->value.type == OPERAND_IDENTITY &&
+                if (mirObjectList->value.type.primitiveType == OPERAND_IDENTITY &&
                     strcmp(mirObjectList->value.identity, identity) == 0) {
                     mirObjectList->value = *replaceWith;
                     result = true;

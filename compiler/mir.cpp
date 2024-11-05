@@ -21,7 +21,7 @@ static const char *lastCalledMethodIdentity = nullptr;
 
 struct VarNode {
     const char *identity;
-    MirOperandTypeWrapper operandType;
+    MirOperandType operandType;
     bool isPointer;
 
     VarNode *next;
@@ -40,7 +40,7 @@ VarNode *getVarInfo(const char *identity) {
     return nullptr;
 }
 
-void addVarInfo(const char *identity, MirOperandTypeWrapper operandType) {
+void addVarInfo(const char *identity, MirOperandType operandType) {
     if (operandType.primitiveType < 3) {
         loge(MIR_TAG, "internal error: operand type error %d", operandType.primitiveType);
         return;
@@ -74,7 +74,7 @@ void resetVarInfo() {
 
 struct MethodNode {
     const char *identity;
-    MirOperandTypeWrapper operandType;
+    MirOperandType operandType;
     bool isPointer;
 
     MethodNode *next;
@@ -93,7 +93,7 @@ MethodNode *getMethodInfo(const char *identity) {
     return nullptr;
 }
 
-void addMethodInfo(const char *identity, MirOperandTypeWrapper operandType) {
+void addMethodInfo(const char *identity, MirOperandType operandType) {
     if (operandType.primitiveType < 3) {
         loge(MIR_TAG, "internal error: operand type error");
         return;
@@ -253,7 +253,7 @@ static const char *convertOperand(MirOperand *mirOperand) {
         snprintf(result, 21, "[addr:%s]", mirOperand->identity);
         return result;
     }
-    switch (mirOperand->type) {
+    switch (mirOperand->type.primitiveType) {
         case OPERAND_IDENTITY:
             return mirOperand->identity;
         case OPERAND_INT8:
@@ -375,7 +375,7 @@ void printMir(Mir *mir) {
     MirData *mirData = mir->mirData;
     while (mirData != nullptr) {
         logd(MIR_TAG, "---#%d:%s[%d]---", mirData->line, mirData->label, mirData->dataSize);
-        switch (mirData->type) {
+        switch (mirData->type.primitiveType) {
             case OPERAND_INT8: {
                 const char *data = (const char *)mirData->data;
                 for (int i = 0; i < mirData->dataSize; i++) {
@@ -788,18 +788,19 @@ void fixMir2Type(Mir2 *mir2) {
 
 void fixMir3Type(Mir3 *mir3) {
     VarNode *varNode = getVarInfo(mir3->distIdentity);
-    MirOperandPrimitiveType operandType1 = varNode->operandType;
-    MirOperandPrimitiveType operandType2 = mir3->value2.type;
-    if (operandType2 == OPERAND_IDENTITY) {
+    MirOperandType operandType1 = varNode->operandType;
+    MirOperandType operandType2 = mir3->value2.type;
+    if (operandType2.primitiveType == OPERAND_IDENTITY) {
         VarNode *operandType2VarNode = getVarInfo(mir3->value2.identity);
         operandType2 = operandType2VarNode->operandType;
-    } else if (operandType2 == OPERAND_RET) {
+    } else if (operandType2.isReturn) {
         MethodNode *methodNode = getMethodInfo(lastCalledMethodIdentity);
         lastCalledMethodIdentity = nullptr;
         operandType2 = methodNode->operandType;
     }
+    //todo: real cmp the data's size
     mir3->distType =
-            operandType1 > operandType2 ? operandType1 : operandType2;
+            operandType1.primitiveType > operandType2.primitiveType ? operandType1 : operandType2;
 }
 
 /**
@@ -822,7 +823,7 @@ void generateArithmeticItem(AstArithmeticItem *arithmeticItem, MirOperand *value
     while (itemMore != nullptr) {
         mirCode = createMirCode(MIR_3);
         mirCode->mir3->distIdentity = tempVal;
-        mirCode->mir3->value1.type = OPERAND_IDENTITY;
+        mirCode->mir3->value1.type.primitiveType = OPERAND_IDENTITY;
         mirCode->mir3->value1.identity = tempVal;
         mirCode->mir3->op = getArithmeticOp(itemMore->arithmeticOperatorType);
         generateArithmeticFactor(itemMore->arithmeticFactor, &mirCode->mir3->value2);
@@ -830,7 +831,7 @@ void generateArithmeticItem(AstArithmeticItem *arithmeticItem, MirOperand *value
         emitMirCode(mirCode);
         itemMore = itemMore->arithmeticItemMore;
     }
-    value->type = OPERAND_IDENTITY;
+    value->type.primitiveType = OPERAND_IDENTITY;
     value->identity = tempVal;
 }
 
@@ -853,7 +854,7 @@ void generateExpressionAssignment(
 
     if (value != nullptr) {
         //a = b = xxx, this fromValue is the "b", not "a"
-        value->type = OPERAND_IDENTITY;
+        value->type.primitiveType = OPERAND_IDENTITY;
         //so the "b" is current fromValue name
         value->identity = expression->identity->name;
     }
@@ -878,7 +879,7 @@ void generateExpressionArithmetic(AstExpressionArithmetic *expression, MirOperan
     while (expressionArithmeticMore != nullptr) {
         mirCode = createMirCode(MIR_3);
         mirCode->mir3->distIdentity = tempVal;
-        mirCode->mir3->value1.type = OPERAND_IDENTITY;
+        mirCode->mir3->value1.type.primitiveType = OPERAND_IDENTITY;
         mirCode->mir3->value1.identity = tempVal;
         mirCode->mir3->op = getArithmeticOp(expressionArithmeticMore->arithmeticOperatorType);
         generateArithmeticItem(expressionArithmeticMore->arithmeticItem, &mirCode->mir3->value2);
@@ -888,7 +889,7 @@ void generateExpressionArithmetic(AstExpressionArithmetic *expression, MirOperan
     }
     if (value != nullptr) {
         //stupid code but it is legal.
-        value->type = OPERAND_IDENTITY;
+        value->type.primitiveType = OPERAND_IDENTITY;
         value->identity = tempVal;
     }
 }
@@ -1323,9 +1324,10 @@ void generateParam(AstParamList *astParamList, MirMethod *mirMethod) {
                 break;
             }
         }
+        MirOperandType type;
+        type.primitiveType = convertAstType2MirType(curAstParamList->paramDefine->type);
         addVarInfo(mirMethodParam->paramName,
-                   convertAstType2MirType(curAstParamList->paramDefine->type),
-                   curAstParamList->paramDefine->type->isPointer);
+                   type);
 
         curAstParamList = curAstParamList->next;
     }
@@ -1341,17 +1343,17 @@ void generateParam(AstParamList *astParamList, MirMethod *mirMethod) {
 void generateMethod(AstMethodDefine *astMethodDefine, MirMethod *mirMethod) {
     mirMethod->label = astMethodDefine->identity->name;
 //    logd(MIR_TAG, "--- mir method:%s", mirMethod->label);
-    addMethodInfo(
-        astMethodDefine->identity->name,
-        convertAstType2MirType(astMethodDefine->type),
-        astMethodDefine->type->isPointer
-        );
+    MirOperandType type;
+    type.primitiveType = convertAstType2MirType(astMethodDefine->type);
     if (astMethodDefine->paramList != nullptr) {
         //var in method params need stack
         generateParam(astMethodDefine->paramList, mirMethod);
     } else {
         mirMethod->param = nullptr;
     }
+    addMethodInfo(
+        astMethodDefine->identity->name,
+        type);
     AstStatementSeq *astStatementSeq = astMethodDefine->statementBlock->statementSeq;
     //start mir code session
     startMirCodeSession();
