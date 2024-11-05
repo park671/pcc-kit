@@ -651,6 +651,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                         array->next = nullptr;
                     } else {
                         array->next = (AstArrayData*)pccMalloc(SYNTAX_TAG, sizeof(AstArrayData));
+                        array = array->next;
                     }
                 }
                 //consume this string
@@ -685,7 +686,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
         case NODE_ARRAY_DATA: {
             AstArrayData* astArrayData = (AstArrayData*) currentNode;
             token = travelAst(token, &astArrayData->data, NODE_PRIMITIVE_DATA);
-            if (strcmp(token->content, ",") != 0) {
+            if (strcmp(token->content, ",") == 0) {
                 //consume ,
                 token = token->next;
                 astArrayData->next = (AstArrayData*) pccMalloc(SYNTAX_TAG, sizeof(AstArrayData));

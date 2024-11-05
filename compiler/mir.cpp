@@ -182,6 +182,10 @@ static const char *convertArithmeticOpString(MirOperator mirOperator) {
             return "/";
         case OP_MOD:
             return "%";
+        case OP_ADR:
+            return "[adr]";
+        case OP_DREF:
+            return "[deref]";
         case OP_ASSIGNMENT:
             return "=";
         case OP_UNKNOWN:
@@ -289,7 +293,7 @@ void printMirCode(MirCode *mirCode) {
     switch (mirCode->mirType) {
         case MIR_2: {
             if (mirCode->mir2->distType.primitiveType < 3) {
-                loge(MIR_TAG, "error!");
+                loge(MIR_TAG, "mir2 error!");
             }
             logd(MIR_TAG, "type %d: %s %s %s",
                  mirCode->mir2->distType,
@@ -301,7 +305,7 @@ void printMirCode(MirCode *mirCode) {
         }
         case MIR_3: {
             if (mirCode->mir2->distType.primitiveType < 3) {
-                loge(MIR_TAG, "error!");
+                loge(MIR_TAG, "mir3 error!");
             }
             logd(MIR_TAG, "type %d: %s = %s %s %s",
                  mirCode->mir3->distType,
@@ -1397,5 +1401,7 @@ Mir *generateMir(AstProgram *program) {
     }
     mir->mirMethod = firstMirMethod;
     mir->methodSize = methodSize;
+    mir->mirData = firstMirData;
+    mir->dataSize = mirDataLine;
     return mir;
 }

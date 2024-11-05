@@ -149,6 +149,7 @@ int main(int argc, char **argv) {
     Mir *mir = generateMir(program);
     releaseAstMemory();
     mir = optimize(mir, optimizationLevel);
+    printMir(mir);
     generateTargetFile(mir,
                        targetArch,
                        targetPlatform,
