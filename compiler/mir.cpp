@@ -2,19 +2,27 @@
 #include <cstdio>
 #include <string.h>
 #include "mir.h"
+
+#include <mspace.h>
+
 #include "logger.h"
 
 #define MIR_TAG "mir"
 
+static MirData *firstMirData;
+static MirData *lastMirData;
+
 static MirCode *firstMirCode;
 static MirCode *lastMirCode;
+
 static bool mirCodeSessionStarted = false;
 
 static const char *lastCalledMethodIdentity = nullptr;
 
 struct VarNode {
     const char *identity;
-    MirOperandType operandType;
+    MirOperandTypeWrapper operandType;
+    bool isPointer;
 
     VarNode *next;
 };
@@ -32,13 +40,14 @@ VarNode *getVarInfo(const char *identity) {
     return nullptr;
 }
 
-void addVarInfo(const char *identity, MirOperandType operandType) {
-    if (operandType < 3) {
-        loge(MIR_TAG, "internal error: operand type error");
+void addVarInfo(const char *identity, MirOperandTypeWrapper operandType) {
+    if (operandType.primitiveType < 3) {
+        loge(MIR_TAG, "internal error: operand type error %d", operandType.primitiveType);
         return;
     }
-    VarNode *varNode = (VarNode *) malloc(sizeof(VarNode));
+    VarNode *varNode = (VarNode *) pccMalloc(MIR_TAG, sizeof(VarNode));
     varNode->identity = identity;
+    varNode->isPointer = operandType.isPointer;
     varNode->operandType = operandType;
     if (currentStackVarNodeHead == nullptr) {
         currentStackVarNodeHead = varNode;
@@ -65,7 +74,8 @@ void resetVarInfo() {
 
 struct MethodNode {
     const char *identity;
-    MirOperandType operandType;
+    MirOperandTypeWrapper operandType;
+    bool isPointer;
 
     MethodNode *next;
 };
@@ -83,13 +93,14 @@ MethodNode *getMethodInfo(const char *identity) {
     return nullptr;
 }
 
-void addMethodInfo(const char *identity, MirOperandType operandType) {
-    if (operandType < 3) {
+void addMethodInfo(const char *identity, MirOperandTypeWrapper operandType) {
+    if (operandType.primitiveType < 3) {
         loge(MIR_TAG, "internal error: operand type error");
         return;
     }
-    MethodNode *pMethodNode = (MethodNode *) malloc(sizeof(MethodNode));
+    MethodNode *pMethodNode = (MethodNode *) pccMalloc(MIR_TAG, sizeof(MethodNode));
     pMethodNode->identity = identity;
+    pMethodNode->isPointer = operandType.isPointer;
     pMethodNode->operandType = operandType;
     if (methodNodeHead == nullptr) {
         methodNodeHead = pMethodNode;
@@ -126,6 +137,10 @@ static MirCode *getMirCodeSessionHead() {
     return firstMirCode;
 }
 
+static MirData *getMirDataSessionHead() {
+    return firstMirData;
+}
+
 static int mirCodeLine = 0;
 
 static void emitMirCode(MirCode *mirCode) {
@@ -139,6 +154,20 @@ static void emitMirCode(MirCode *mirCode) {
         lastMirCode->nextCode = mirCode;
     }
     lastMirCode = mirCode;
+}
+
+static int mirDataLine = 0;
+
+static void emitMirData(MirData *mirData) {
+    mirData->next = nullptr;
+    mirData->line = mirDataLine++;
+    if(firstMirData == nullptr) {
+        firstMirData = mirData;
+    }
+    if(lastMirData != nullptr) {
+        lastMirData->next = mirData;
+    }
+    lastMirData = mirData;
 }
 
 static const char *convertArithmeticOpString(MirOperator mirOperator) {
@@ -182,11 +211,8 @@ static const char *convertBoolOpString(MirBooleanOperator mirBooleanOperator) {
 }
 
 
-MirOperandType convertAstType2MirType(AstType *retType) {
-    if (retType->isPointer) {
-        return OPERAND_POINTER;
-    }
-    PrimitiveType primitiveType = retType->primitiveType;
+MirOperandPrimitiveType convertAstType2MirType(AstType *astType) {
+    PrimitiveType primitiveType = astType->primitiveType;
     switch (primitiveType) {
         case TYPE_CHAR: {
             return OPERAND_INT8;
@@ -215,47 +241,54 @@ MirOperandType convertAstType2MirType(AstType *retType) {
             exit(1);
         }
     }
-    return OPERAND_UNKNOWN;
 }
 
 static const char *convertOperand(MirOperand *mirOperand) {
     char *result = nullptr;
+    if (mirOperand->type.isReturn) {
+        return "[last ret]";
+    }
+    if (mirOperand->type.isPointer) {
+        result = (char *) pccMalloc(MIR_TAG, sizeof(char) * 21);
+        snprintf(result, 21, "[addr:%s]", mirOperand->identity);
+        return result;
+    }
     switch (mirOperand->type) {
         case OPERAND_IDENTITY:
             return mirOperand->identity;
-        case OPERAND_RET:
-            return "[last ret]";
         case OPERAND_INT8:
-            result = (char *) malloc(sizeof(char) * 21);
+            result = (char *) pccMalloc(MIR_TAG, sizeof(char) * 21);
             snprintf(result, 21, "%d", mirOperand->dataInt8);
             return result;
         case OPERAND_INT16:
-            result = (char *) malloc(sizeof(char) * 21);
+            result = (char *) pccMalloc(MIR_TAG, sizeof(char) * 21);
             snprintf(result, 21, "%d", mirOperand->dataInt16);
             return result;
         case OPERAND_INT32:
-            result = (char *) malloc(sizeof(char) * 21);
+            result = (char *) pccMalloc(MIR_TAG, sizeof(char) * 21);
             snprintf(result, 21, "%d", mirOperand->dataInt32);
             return result;
         case OPERAND_INT64:
-            result = (char *) malloc(sizeof(char) * 21);
+            result = (char *) pccMalloc(MIR_TAG, sizeof(char) * 21);
             snprintf(result, 21, "%lld", mirOperand->dataInt64);
             return result;
         case OPERAND_FLOAT32:
-            result = (char *) malloc(sizeof(char) * 21);
+            result = (char *) pccMalloc(MIR_TAG, sizeof(char) * 21);
             snprintf(result, 21, "%f", mirOperand->dataFloat32);
             return result;
         case OPERAND_FLOAT64:
-            result = (char *) malloc(sizeof(char) * 21);
+            result = (char *) pccMalloc(MIR_TAG, sizeof(char) * 21);
             snprintf(result, 21, "%f", mirOperand->dataFloat64);
             return result;
+        case OPERAND_UNKNOWN: break;
+        case OPERAND_VOID: break;
     }
 }
 
 void printMirCode(MirCode *mirCode) {
     switch (mirCode->mirType) {
         case MIR_2: {
-            if (mirCode->mir2->distType < 3) {
+            if (mirCode->mir2->distType.primitiveType < 3) {
                 loge(MIR_TAG, "error!");
             }
             logd(MIR_TAG, "type %d: %s %s %s",
@@ -267,7 +300,7 @@ void printMirCode(MirCode *mirCode) {
             break;
         }
         case MIR_3: {
-            if (mirCode->mir2->distType < 3) {
+            if (mirCode->mir2->distType.primitiveType < 3) {
                 loge(MIR_TAG, "error!");
             }
             logd(MIR_TAG, "type %d: %s = %s %s %s",
@@ -328,34 +361,108 @@ void printMirCode(MirCode *mirCode) {
     }
 }
 
+void printMir(Mir *mir) {
+    MirMethod *mirMethod = mir->mirMethod;
+    while (mirMethod != nullptr) {
+        logd(MIR_TAG, "---method:%s---", mirMethod->label);
+        MirCode *mirCode = mirMethod->code;
+        while (mirCode != nullptr) {
+            printMirCode(mirCode);
+            mirCode = mirCode->nextCode;
+        }
+        mirMethod = mirMethod->next;
+    }
+    MirData *mirData = mir->mirData;
+    while (mirData != nullptr) {
+        logd(MIR_TAG, "---#%d:%s[%d]---", mirData->line, mirData->label, mirData->dataSize);
+        switch (mirData->type) {
+            case OPERAND_INT8: {
+                const char *data = (const char *)mirData->data;
+                for (int i = 0; i < mirData->dataSize; i++) {
+                    logd(MIR_TAG, "[%d]=%d(%c)", i, data[i], data[i]);
+                }
+                break;
+            }
+            case OPERAND_INT16: {
+                const short *data = (const short *)mirData->data;
+                for (int i = 0; i < mirData->dataSize; i++) {
+                    logd(MIR_TAG, "[%d]=%d", i, data[i]);
+                }
+                break;
+            }
+            case OPERAND_INT32: {
+                const int *data = (const int *)mirData->data;
+                for (int i = 0; i < mirData->dataSize; i++) {
+                    logd(MIR_TAG, "[%d]=%d", i, data[i]);
+                }
+                break;
+            }
+            case OPERAND_INT64: {
+                const long *data = (const long *)mirData->data;
+                for (int i = 0; i < mirData->dataSize; i++) {
+                    logd(MIR_TAG, "[%d]=%d", i, data[i]);
+                }
+                break;
+            }
+            case OPERAND_FLOAT32: {
+                const char *data = (const char *)mirData->data;
+                for (int i = 0; i < mirData->dataSize; i++) {
+                    logd(MIR_TAG, "[%d]=%d", i, data[i]);
+                }
+                break;
+            }
+            case OPERAND_FLOAT64: {
+                const char *data = (const char *)mirData->data;
+                for (int i = 0; i < mirData->dataSize; i++) {
+                    logd(MIR_TAG, "[%d]=%d", i, data[i]);
+                }
+                break;
+            }
+            case OPERAND_UNKNOWN:
+            default: {
+                loge(MIR_TAG, "unknown MIR:%d", mirData->type);
+                break;
+            }
+        }
+
+        logd(MIR_TAG, "line:%d", mirData->data);
+        mirData = mirData->next;
+    }
+}
+
+static MirData *createMirData() {
+    MirData *mirData = (MirData *) pccMalloc(MIR_TAG, sizeof(MirData));
+    return mirData;
+}
+
 static MirCode *createMirCode(MirType mirType) {
-    MirCode *mirCode = (MirCode *) malloc(sizeof(MirCode));
+    MirCode *mirCode = (MirCode *) pccMalloc(MIR_TAG, sizeof(MirCode));
     mirCode->mirType = mirType;
     switch (mirType) {
         case MIR_3: {
-            mirCode->mir3 = (Mir3 *) malloc(sizeof(Mir3));
+            mirCode->mir3 = (Mir3 *) pccMalloc(MIR_TAG, sizeof(Mir3));
             break;
         }
         case MIR_2: {
-            mirCode->mir2 = (Mir2 *) malloc(sizeof(Mir2));
+            mirCode->mir2 = (Mir2 *) pccMalloc(MIR_TAG, sizeof(Mir2));
             break;
         }
         case MIR_CMP: {
-            mirCode->mirCmp = (MirCmp *) malloc(sizeof(MirCmp));
+            mirCode->mirCmp = (MirCmp *) pccMalloc(MIR_TAG, sizeof(MirCmp));
             break;
         }
         case MIR_CALL: {
-            mirCode->mirCall = (MirCall *) malloc(sizeof(MirCall));
+            mirCode->mirCall = (MirCall *) pccMalloc(MIR_TAG, sizeof(MirCall));
             break;
         }
         case MIR_RET: {
-            mirCode->mirRet = (MirRet *) malloc(sizeof(MirRet));
+            mirCode->mirRet = (MirRet *) pccMalloc(MIR_TAG, sizeof(MirRet));
             break;
         }
             //reuse this
         case MIR_JMP:
         case MIR_LABEL: {
-            mirCode->mirLabel = (MirLabel *) malloc(sizeof(MirLabel));
+            mirCode->mirLabel = (MirLabel *) pccMalloc(MIR_TAG, sizeof(MirLabel));
             break;
         }
         case MIR_OPT_FLAG:
@@ -366,16 +473,23 @@ static MirCode *createMirCode(MirType mirType) {
 
 int tempValueIndex = 0;
 int tempLabelIndex = 0;
+int dataLabelIndex = 0;
 
 char *allocTempValue() {
-    char *result = (char *) malloc(sizeof(char) * 14);
+    char *result = (char *) pccMalloc(MIR_TAG, sizeof(char) * 14);
     snprintf(result, 14, "_tv_%d", tempValueIndex++);
     return result;
 }
 
 char *allocTempLabel() {
-    char *result = (char *) malloc(sizeof(char) * 14);
+    char *result = (char *) pccMalloc(MIR_TAG, sizeof(char) * 14);
     snprintf(result, 14, "_lb_%d", tempLabelIndex++);
+    return result;
+}
+
+char *allocDataLabel() {
+    char *result = (char *) pccMalloc(MIR_TAG, sizeof(char) * 14);
+    snprintf(result, 14, "_data_%d", dataLabelIndex++);
     return result;
 }
 
@@ -439,49 +553,119 @@ MirBooleanOperator getBoolOp(RelationOperator operatorType) {
     }
 }
 
+int getPrimitiveTypeSize(AstType *type) {
+    if (type->isPointer) {
+        return 8;//64bit addr
+    }
+    switch (type->primitiveType) {
+        case TYPE_VOID:
+        case TYPE_CHAR: {
+            return 1;
+        }
+        case TYPE_SHORT: {
+            return 2;
+        }
+        case TYPE_INT: {
+            return 4;
+        }
+        case TYPE_LONG: {
+            return 8;
+        }
+        case TYPE_FLOAT: {
+            return 4;
+        }
+        case TYPE_DOUBLE: {
+            return 8;
+        }
+        case TYPE_UNKNOWN:
+        default: {
+            loge(MIR_TAG, "unknown type for size");
+            exit(-1);
+        }
+    }
+}
+
+const char *generateAddressFromIdentity(const char *identity) {
+    MirCode *mirCode = createMirCode(MIR_2);
+    mirCode->mir2->distIdentity = allocTempValue();
+    mirCode->mir2->distType.isPointer = true;
+    mirCode->mir2->distType.primitiveType = OPERAND_P;
+    mirCode->mir2->op = OP_ADR;
+    mirCode->mir2->fromValue.type.primitiveType = OPERAND_IDENTITY;
+    mirCode->mir2->fromValue.identity = identity;
+    addVarInfo(mirCode->mir2->distIdentity, mirCode->mir2->distType);
+    emitMirCode(mirCode);
+    return mirCode->mir2->distIdentity;
+}
+
+const char *generateDereferenceFromIdentity(const char *identity) {
+    MirCode *mirCode = createMirCode(MIR_2);
+    mirCode->mir2->distIdentity = allocTempValue();
+    mirCode->mir2->op = OP_DREF;
+    VarNode *varNode = getVarInfo(identity);
+    if (varNode == nullptr) {
+        loge(MIR_TAG, "deref with unknown var:%s", identity);
+        exit(-1);
+    }
+    if (!varNode->isPointer) {
+        loge(MIR_TAG, "deref from non-pointer var:%s", identity);
+        exit(-1);
+    }
+    mirCode->mir2->fromValue.type = varNode->operandType;
+    mirCode->mir2->fromValue.identity = identity;
+    emitMirCode(mirCode);
+    return mirCode->mir2->distIdentity;
+}
+
 void generateArithmeticFactor(AstArithmeticFactor *arithmeticFactor, MirOperand *mirOperand) {
     switch (arithmeticFactor->factorType) {
         case ARITHMETIC_IDENTITY: {
-            mirOperand->type = OPERAND_IDENTITY;
+            mirOperand->type.isPointer = false;
+            mirOperand->type.isReturn = false;
+            mirOperand->type.primitiveType = OPERAND_IDENTITY;
             mirOperand->identity = arithmeticFactor->identity->name;
             break;
         }
         case ARITHMETIC_PRIMITIVE: {
             AstPrimitiveData *primitiveData = arithmeticFactor->primitiveData;
-            switch (primitiveData->type) {
+            mirOperand->type.isReturn = false;
+            if (primitiveData->type.isPointer) {
+                mirOperand->type.isPointer = true;
+            }
+            switch (primitiveData->type.primitiveType) {
                 case TYPE_CHAR: {
-                    mirOperand->type = OPERAND_INT8;
+                    mirOperand->type.primitiveType = OPERAND_INT8;
                     mirOperand->dataInt8 = primitiveData->dataChar;
                     break;
                 }
                 case TYPE_SHORT: {
-                    mirOperand->type = OPERAND_INT16;
+                    mirOperand->type.primitiveType = OPERAND_INT16;
                     mirOperand->dataInt16 = primitiveData->dataShort;
                     break;
                 }
                 case TYPE_INT: {
-                    mirOperand->type = OPERAND_INT32;
+                    mirOperand->type.primitiveType = OPERAND_INT32;
                     mirOperand->dataInt32 = primitiveData->dataInt;
                     break;
                 }
                 case TYPE_LONG: {
-                    mirOperand->type = OPERAND_INT64;
+                    mirOperand->type.primitiveType = OPERAND_INT64;
                     mirOperand->dataInt64 = primitiveData->dataLong;
                     break;
                 }
                 case TYPE_FLOAT: {
-                    mirOperand->type = OPERAND_FLOAT32;
+                    mirOperand->type.primitiveType = OPERAND_FLOAT32;
                     mirOperand->dataFloat32 = primitiveData->dataFloat;
                     break;
                 }
                 case TYPE_DOUBLE: {
-                    mirOperand->type = OPERAND_FLOAT64;
+                    mirOperand->type.primitiveType = OPERAND_FLOAT64;
                     mirOperand->dataFloat64 = primitiveData->dataDouble;
                     break;
                 }
                 case TYPE_VOID: {
                     logd(MIR_TAG, "[-] what type void?");
-                    mirOperand->type = OPERAND_VOID;
+                    mirOperand->type.primitiveType = OPERAND_VOID;
                     break;
                 }
                 case TYPE_UNKNOWN:
@@ -492,10 +676,96 @@ void generateArithmeticFactor(AstArithmeticFactor *arithmeticFactor, MirOperand 
             }
             break;
         }
+        case ARITHMETIC_ARRAY: {
+            AstArrayData *arrayData = arithmeticFactor->array;
+            MirData *mirData = createMirData();
+            mirData->dataSize = 0;
+            while (arrayData != nullptr) {
+                mirData->dataSize++;
+                arrayData = arrayData->next;
+            }
+            arrayData = arithmeticFactor->array;
+            int dataSize = getPrimitiveTypeSize(&arrayData->data.type) * mirData->dataSize;
+            mirData->data = pccMalloc(MIR_TAG, dataSize);
+            mirData->type.isReturn = false;
+            mirData->type.isPointer = arrayData->data.type.isPointer;
+            mirData->type.primitiveType = convertAstType2MirType(&arrayData->data.type);
+            int index = 0;
+            while (arrayData != nullptr) {
+                if(arrayData->data.type.isPointer) {
+                    ((uint64_t *)mirData->data)[index ++] = arrayData->data.dataLong;
+                    continue;
+                }
+
+                switch (arrayData->data.type.primitiveType) {
+                    case TYPE_VOID:
+                        logd(MIR_TAG, "void array solve as byte.");
+                    case TYPE_CHAR: {
+                        ((char *)mirData->data)[index ++] = arrayData->data.dataChar;
+                        break;
+                    }
+                    case TYPE_SHORT: {
+                        ((short *)mirData->data)[index ++] = arrayData->data.dataShort;
+                        break;
+                    }
+                    case TYPE_INT: {
+                        ((int *)mirData->data)[index ++] = arrayData->data.dataInt;
+                        break;
+                    }
+                    case TYPE_LONG: {
+                        ((long *)mirData->data)[index ++] = arrayData->data.dataLong;
+                        break;
+                    }
+                    case TYPE_FLOAT: {
+                        ((float *)mirData->data)[index ++] = arrayData->data.dataFloat;
+                        break;
+                    }
+                    case TYPE_DOUBLE: {
+                        ((double *)mirData->data)[index ++] = arrayData->data.dataDouble;
+                        break;
+                    }
+                    case TYPE_UNKNOWN:
+                    default: {
+                        loge(MIR_TAG, "unknown array type.");
+                        break;
+                    }
+                }
+                arrayData = arrayData->next;
+            }
+            if (index != mirData->dataSize) {
+                loge(MIR_TAG, "[-] internal error: array size error:%d, %d", index, mirData->dataSize);
+                exit(-1);
+            }
+            mirData->label = allocDataLabel();
+            emitMirData(mirData);
+            mirOperand->type.isPointer = true;
+            mirOperand->type.isReturn = false;
+            mirOperand->type.primitiveType = mirData->type.primitiveType;
+            mirOperand->identity = mirData->label;
+            break;
+        }
+        case ARITHMETIC_ADR_P: {
+            mirOperand->type.isPointer = true;
+            mirOperand->type.isReturn = false;
+            mirOperand->type.primitiveType = OPERAND_P;
+            mirOperand->identity = generateAddressFromIdentity(arithmeticFactor->identity->name);
+            break;
+        }
+        case ARITHMETIC_DREF_P: {
+            VarNode *varNode = getVarInfo(arithmeticFactor->identity->name);
+            if (varNode == nullptr) {
+                loge(MIR_TAG, "[-] deref from unknown var:%s", arithmeticFactor->identity->name);
+                exit(-1);
+            }
+            mirOperand->type = varNode->operandType;
+            mirOperand->identity = generateDereferenceFromIdentity(arithmeticFactor->identity->name);
+            break;
+        }
         case ARITHMETIC_METHOD_RET: {
             generateStatementMethodCall(arithmeticFactor->methodCall);
-            mirOperand->type = OPERAND_RET;
-            mirOperand->retType = convertAstType2MirType(arithmeticFactor->methodCall->retType);
+            mirOperand->type.isReturn = true;
+            mirOperand->type.isPointer = arithmeticFactor->methodCall->retType->isPointer;
+            mirOperand->type.primitiveType = convertAstType2MirType(arithmeticFactor->methodCall->retType);
             break;
         }
         default: {
@@ -506,10 +776,10 @@ void generateArithmeticFactor(AstArithmeticFactor *arithmeticFactor, MirOperand 
 
 void fixMir2Type(Mir2 *mir2) {
     mir2->distType = mir2->fromValue.type;
-    if (mir2->distType == OPERAND_IDENTITY) {
+    if (mir2->distType.primitiveType == OPERAND_IDENTITY) {
         VarNode *varNode = getVarInfo(mir2->fromValue.identity);
         mir2->distType = varNode->operandType;
-    } else if (mir2->distType == OPERAND_RET) {
+    } else if (mir2->distType.isReturn) {
         MethodNode *methodNode = getMethodInfo(lastCalledMethodIdentity);
         lastCalledMethodIdentity = nullptr;
         mir2->distType = methodNode->operandType;
@@ -518,8 +788,8 @@ void fixMir2Type(Mir2 *mir2) {
 
 void fixMir3Type(Mir3 *mir3) {
     VarNode *varNode = getVarInfo(mir3->distIdentity);
-    MirOperandType operandType1 = varNode->operandType;
-    MirOperandType operandType2 = mir3->value2.type;
+    MirOperandPrimitiveType operandType1 = varNode->operandType;
+    MirOperandPrimitiveType operandType2 = mir3->value2.type;
     if (operandType2 == OPERAND_IDENTITY) {
         VarNode *operandType2VarNode = getVarInfo(mir3->value2.identity);
         operandType2 = operandType2VarNode->operandType;
@@ -634,7 +904,7 @@ void generateStatementReturn(
     if (returnStatement->expression == nullptr) {
         mirCode->mirRet->value = nullptr;
     } else {
-        MirOperand *mirOperand = (MirOperand *) malloc(sizeof(MirOperand));
+        MirOperand *mirOperand = (MirOperand *) pccMalloc(MIR_TAG, sizeof(MirOperand));
         generateExpression(returnStatement->expression, mirOperand);
         mirCode->mirRet->value = mirOperand;
     }
@@ -651,7 +921,7 @@ MirObjectList *generateObjectList(AstObjectList *objectList) {
     MirObjectList *lastMirObjectList = nullptr;
     MirObjectList *mirObjectList = nullptr;
     while (objectList != nullptr) {
-        mirObjectList = (MirObjectList *) malloc(sizeof(MirObjectList));
+        mirObjectList = (MirObjectList *) pccMalloc(MIR_TAG, sizeof(MirObjectList));
         mirObjectList->next = nullptr;
         if (firstMirObjectList == nullptr) {
             firstMirObjectList = mirObjectList;
@@ -1004,7 +1274,7 @@ void generateParam(AstParamList *astParamList, MirMethod *mirMethod) {
     MirMethodParam *firstMirMethodParam = nullptr;
     MirMethodParam *lastMirMethodParam = nullptr;
     while (curAstParamList != nullptr) {
-        mirMethodParam = (MirMethodParam *) malloc(sizeof(MirMethodParam));
+        mirMethodParam = (MirMethodParam *) pccMalloc(MIR_TAG, sizeof(MirMethodParam));
         mirMethodParam->next = nullptr;
         if (firstMirMethodParam == nullptr) {
             firstMirMethodParam = mirMethodParam;
@@ -1054,7 +1324,8 @@ void generateParam(AstParamList *astParamList, MirMethod *mirMethod) {
             }
         }
         addVarInfo(mirMethodParam->paramName,
-                   convertAstType2MirType(curAstParamList->paramDefine->type));
+                   convertAstType2MirType(curAstParamList->paramDefine->type),
+                   curAstParamList->paramDefine->type->isPointer);
 
         curAstParamList = curAstParamList->next;
     }
@@ -1070,7 +1341,11 @@ void generateParam(AstParamList *astParamList, MirMethod *mirMethod) {
 void generateMethod(AstMethodDefine *astMethodDefine, MirMethod *mirMethod) {
     mirMethod->label = astMethodDefine->identity->name;
 //    logd(MIR_TAG, "--- mir method:%s", mirMethod->label);
-    addMethodInfo(astMethodDefine->identity->name, convertAstType2MirType(astMethodDefine->type));
+    addMethodInfo(
+        astMethodDefine->identity->name,
+        convertAstType2MirType(astMethodDefine->type),
+        astMethodDefine->type->isPointer
+        );
     if (astMethodDefine->paramList != nullptr) {
         //var in method params need stack
         generateParam(astMethodDefine->paramList, mirMethod);
@@ -1096,7 +1371,7 @@ void generateMethod(AstMethodDefine *astMethodDefine, MirMethod *mirMethod) {
  */
 Mir *generateMir(AstProgram *program) {
     logd(MIR_TAG, "generate mir...");
-    Mir *mir = (Mir *) malloc(sizeof(Mir));
+    Mir *mir = (Mir *) pccMalloc(MIR_TAG, sizeof(Mir));
     AstMethodSeq *astMethodSeq = program->methodSeq;
     MirMethod *mirMethod = nullptr;
     MirMethod *lastMirMethod = nullptr;
@@ -1104,7 +1379,7 @@ Mir *generateMir(AstProgram *program) {
     int methodSize = 0;
     while (astMethodSeq != nullptr) {
         //maintain mir linked-list
-        mirMethod = (MirMethod *) malloc(sizeof(MirMethod));
+        mirMethod = (MirMethod *) pccMalloc(MIR_TAG, sizeof(MirMethod));
         mirMethod->next = nullptr;
         if (firstMirMethod == nullptr) {
             firstMirMethod = mirMethod;

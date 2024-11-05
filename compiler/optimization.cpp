@@ -154,19 +154,6 @@ void foldMir2(MirMethod *mirMethod) {
     }
 }
 
-void printMirCode(Mir *mir) {
-    MirMethod *mirMethod = mir->mirMethod;
-    while (mirMethod != nullptr) {
-        logd(OPT_TAG, "---method:%s---", mirMethod->label);
-        MirCode *mirCode = mirMethod->code;
-        while (mirCode != nullptr) {
-            printMirCode(mirCode);
-            mirCode = mirCode->nextCode;
-        }
-        mirMethod = mirMethod->next;
-    }
-}
-
 Mir *optimize(Mir *mir, int optimizationLevel) {
     if (optimizationLevel > 0) {
         logd(OPT_TAG, "optimizing...");

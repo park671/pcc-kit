@@ -292,7 +292,7 @@ int getVarSizeFromStack(const char *varName) {
  * @param mirOperandType
  * @return
  */
-int getPrimitiveMirOperandSizeInByte(MirOperandType mirOperandType) {
+int getPrimitiveMirOperandSizeInByte(MirOperandPrimitiveType mirOperandType) {
     switch (mirOperandType) {
         case OPERAND_INT8:
         case OPERAND_INT16:

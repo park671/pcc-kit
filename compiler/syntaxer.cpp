@@ -644,7 +644,8 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 AstArrayData* array = astArithmeticFactor->array;
                 for (int i = 0; i < contentLength; i++) {
                     char dataChar = contentData[i];
-                    array->data.type = TYPE_CHAR;
+                    array->data.type.isPointer = false;
+                    array->data.type.primitiveType = TYPE_CHAR;
                     array->data.dataChar = dataChar;
                     if (i == contentLength - 1) {
                         array->next = nullptr;
@@ -705,16 +706,20 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                     exit(-1);
                 }
                 if (num <= CHAR_MAX) {
-                    astPrimitiveData->type = TYPE_CHAR;
+                    astPrimitiveData->type.isPointer = false;
+                    astPrimitiveData->type.primitiveType = TYPE_CHAR;
                     astPrimitiveData->dataChar = (char) num;
                 } else if (num <= SHRT_MAX) {
-                    astPrimitiveData->type = TYPE_SHORT;
+                    astPrimitiveData->type.isPointer = false;
+                    astPrimitiveData->type.primitiveType = TYPE_SHORT;
                     astPrimitiveData->dataChar = (short) num;
                 } else if (num <= INT_MAX) {
-                    astPrimitiveData->type = TYPE_INT;
+                    astPrimitiveData->type.isPointer = false;
+                    astPrimitiveData->type.primitiveType = TYPE_INT;
                     astPrimitiveData->dataChar = (int) num;
                 } else if (num <= LONG_MAX) {
-                    astPrimitiveData->type = TYPE_LONG;
+                    astPrimitiveData->type.isPointer = false;
+                    astPrimitiveData->type.primitiveType = TYPE_LONG;
                     astPrimitiveData->dataChar = (long) num;
                 } else {
                     loge(SYNTAX_TAG, "[-]error: int out of range: %s", token->content);
@@ -728,10 +733,12 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 }
                 //todo: pass the float width to here.
                 if (true) {
-                    astPrimitiveData->type = TYPE_DOUBLE;
+                    astPrimitiveData->type.isPointer = false;
+                    astPrimitiveData->type.primitiveType = TYPE_DOUBLE;
                     astPrimitiveData->dataFloat = num;
                 } else {
-                    astPrimitiveData->type = TYPE_DOUBLE;
+                    astPrimitiveData->type.isPointer = false;
+                    astPrimitiveData->type.primitiveType = TYPE_DOUBLE;
                     astPrimitiveData->dataDouble = num;
                 }
             }

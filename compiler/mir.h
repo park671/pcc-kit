@@ -80,10 +80,9 @@ struct MirCode {
     MirCode *nextCode;
 };
 
-enum MirOperandType {
+enum MirOperandPrimitiveType {
     OPERAND_UNKNOWN,
     OPERAND_IDENTITY,
-    OPERAND_RET,
 
     OPERAND_VOID,
 
@@ -94,12 +93,18 @@ enum MirOperandType {
 
     OPERAND_FLOAT32,
     OPERAND_FLOAT64,
+    //unresolved pointer, need dfs
+    OPERAND_P,
+};
 
-    OPERAND_POINTER
+struct MirOperandTypeWrapper {
+    MirOperandPrimitiveType primitiveType;
+    bool isPointer;
+    bool isReturn;
 };
 
 struct MirOperand {
-    MirOperandType type;
+    MirOperandTypeWrapper type;
     union {
         const char *identity;
 
@@ -110,8 +115,6 @@ struct MirOperand {
 
         float dataFloat32;
         double dataFloat64;
-
-        MirOperandType retType;
     };
 };
 
@@ -124,10 +127,13 @@ enum MirOperator {
     OP_DIV,
     OP_MOD,
     OP_ASSIGNMENT,
+    //pointer
+    OP_ADR,//&
+    OP_DREF,//*
 };
 
 struct Mir3 {
-    MirOperandType distType;
+    MirOperandTypeWrapper distType;
     const char *distIdentity;
     MirOperand value1;
     MirOperator op;
@@ -135,7 +141,7 @@ struct Mir3 {
 };
 
 struct Mir2 {
-    MirOperandType distType;
+    MirOperandTypeWrapper distType;
     const char *distIdentity;
     MirOperator op;
     MirOperand fromValue;
@@ -179,12 +185,16 @@ struct MirCall {
 };
 
 struct MirData {
-    //todo
+    MirOperandTypeWrapper type;
+    const char *label;
+    int line;
+    void *data;
+    uint32_t dataSize;
     MirData *next;
 };
 
 extern Mir *generateMir(AstProgram *program);
 
-extern void printMirCode(MirCode *mirCode);
+extern void printMir(Mir *mir);
 
 #endif

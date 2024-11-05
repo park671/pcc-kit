@@ -138,7 +138,7 @@ struct AstExpressionBool {
 };
 
 struct AstPrimitiveData {
-    PrimitiveType type;
+    AstType type;//pointer only data long
     union {
         char dataChar;
         short dataShort;
