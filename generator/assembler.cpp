@@ -67,7 +67,7 @@ void generateTargetFile(
 
                 Elf64_Shdr *shstrtabSectionHeader = createSectionHeader(SHSTRTAB_SECTION_IDX,
                                                                         SHT_STRTAB,
-                                                                        SHF_STRINGS,
+                                                                        SHF_STRINGS | SHF_ALLOC,
                                                                         currentOffset,
                                                                         currentOffset,
                                                                         52,
@@ -80,7 +80,7 @@ void generateTargetFile(
                 int sectionHeaderOffset = programHeaderOffset + (sizeof(Elf64_Phdr) * programHeaderCount);
 
 
-                Elf64_Ehdr *elfHeader = createElfHeader(ET_EXEC,
+                Elf64_Ehdr *elfHeader = createElfHeader(ET_DYN,
                                                         EM_AARCH64,
                                                         programEntry,
                                                         programHeaderOffset,
