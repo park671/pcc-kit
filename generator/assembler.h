@@ -32,7 +32,6 @@ extern void generateTargetFile(
         Mir *mir,
         Arch arch,
         Platform platform,
-        int outputAssembly,
         int sharedLibrary,
         const char *outputFileName);
 

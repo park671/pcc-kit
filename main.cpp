@@ -43,11 +43,9 @@ static void usage(int exitcode) {
             "Usage: pcc -[options] <file>\n\n"
             "  -o <filename>        \toutput file path\n"
             "  -O<number>           \toptimization level\n"
-            "  -S                   \tcompile to assembly (no binary)\n"
             "  -a <target-arch>     \ttarget cpu inst (arm64, x86_64)\n"
             "  -p <target-platform> \ttarget os platform (linux, macos, windows, bare)\n"
             "  -shared              \twrapper as shared lib\n"
-            "  -fpic                \tposition independent code\n"
             "  -h                   \tprint this help\n"
             "\n"
     );
@@ -153,7 +151,6 @@ int main(int argc, char **argv) {
     generateTargetFile(mir,
                        targetArch,
                        targetPlatform,
-                       outputAssembly,
                        sharedLib,
                        outputFileName);
     return 0;
