@@ -11,18 +11,6 @@
 
 static const char *ASSEMBLER_TAG = "assembler";
 
-// 将 value 对齐到 alignment 的倍数
-static inline int alignTo(int value, int alignment) {
-    if (alignment <= 0) {
-        return value; // 防止非法对齐值
-    }
-    int remainder = value % alignment;
-    if (remainder == 0) {
-        return value; // 已对齐
-    }
-    return value + alignment - remainder; // 向上对齐
-}
-
 void generateElfArm64(Mir *mir,
                       int sharedLibrary,
                       const char *outputFileName) {
@@ -113,53 +101,54 @@ void generatePeArm64(Mir *mir,
         outputFileName = "output.exe";
     }
     openFile(outputFileName);
+
+    const int sectionAlignment = 4096; // 内存对齐
+    const int fileAlignment = 512;    // 文件对齐
+
     int currentOffset = 0;
     // 1. 生成指令缓冲区
     int sectionCount = generateArm64Target(mir); // 根据 mir 生成指令
     relocateBinary(0);
     InstBuffer *instBuffer = getEmittedInstBuffer(); // 获取生成的指令缓冲区
     // 2. PE 可选头与节偏移设置
-    int sectionAlignment = 4096; // 内存对齐
-    int fileAlignment = 512;    // 文件对齐
-    int textSectionOffset = alignTo(currentOffset, fileAlignment);
-    int textSectionSize = alignTo(instBuffer->size, fileAlignment);
-    int totalHeadersSize = alignTo(sizeof(DOSHeader) +
-                                   sizeof(COFFHeader) +
-                                   sizeof(OptionalHeader) +
-                                   sectionCount * sizeof(SectionHeader),
-                                   fileAlignment);
-    int textSectionVirtualAddress = alignTo(totalHeadersSize, sectionAlignment);
+    currentOffset += getPeHeaderSize();
+    //pe header(dos + coff + optional) + section headers(x1)
+    //current offset is at 1st real section
+    currentOffset += sectionCount * sizeof(SectionHeader);
+    if (sizeof(SectionHeader) != 40) {
+        loge(ASSEMBLER_TAG, "wtf: SectionHeader is not 40byte?");
+        exit(-1);
+    }
+
+    int textSectionFileOffset = alignTo(currentOffset, fileAlignment);
+    int textSectionFileSize = alignTo(instBuffer->size, fileAlignment);
+    int textSectionVirtualAddress = alignTo(currentOffset, sectionAlignment);
     int textSectionVirtualSize = alignTo(instBuffer->size, sectionAlignment);
 
     // 3. 生成节表
     SectionHeader *textSectionHeader = createSectionHeader(".text",
                                                            textSectionVirtualSize,
                                                            textSectionVirtualAddress,
-                                                           textSectionSize,
-                                                           textSectionOffset,
-                                                           0x60000020); // 可执行，可读
-    SectionHeader *shstrtabHeader = createSectionHeader(".shstrtab",
-                                                        52, // 示例字符串表大小
-                                                        alignTo(textSectionVirtualAddress +
-                                                                textSectionVirtualSize, sectionAlignment),
-                                                        52,
-                                                        textSectionOffset + textSectionSize,
-                                                        0x40000040); // 只读
+                                                           textSectionFileSize,
+                                                           textSectionFileOffset,
+                                                           IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_MEM_READ |
+                                                           IMAGE_SCN_CNT_CODE); // 可执行，可读
 
     // 4. 生成 PE 头部
-    void *peHeader = createPEHeader(IMAGE_FILE_MACHINE_ARM64, // ARM64 架构
+    void *peHeader = createPeHeader(IMAGE_FILE_MACHINE_ARM64, // ARM64 架构
                                     sectionCount,
-                                    textSectionSize,
+                                    textSectionFileSize,
                                     textSectionVirtualAddress,
                                     IMAGE_BASE_64_EXE, // 默认 ImageBase
                                     sectionAlignment,
                                     fileAlignment);
 
     // 5. 写入 PE 文件
-    writeFileB(peHeader, totalHeadersSize);
+    writeFileB(peHeader, getPeHeaderSize());//write header
     writeFileB(textSectionHeader, sizeof(SectionHeader));
-    writeFileB(shstrtabHeader, sizeof(SectionHeader));
+    writeEmptyAlignment(fileAlignment);
     writeFileB(instBuffer->result, instBuffer->size); // 写入指令
+    writeEmptyAlignment(fileAlignment);
     logd(ASSEMBLER_TAG, "pe arm64 generation finish.");
 }
 

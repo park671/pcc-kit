@@ -4,12 +4,25 @@
 
 #include "file.h"
 #include <stdio.h>
+#include <stdint.h>
 #include <stdarg.h>
+#include <cstdlib>
+#include <cstring>
 #include "logger.h"
 
 static const char *FILE_TAG = "file";
 
+// 将 value 对齐到 alignment 的倍数
+int alignTo(int value, int alignment) {
+    int remainder = value % alignment;
+    if (remainder == 0) {
+        return value; // 已对齐
+    }
+    return value + alignment - remainder; // 向上对齐
+}
+
 static FILE *targetFile = nullptr;
+static volatile uint32_t fileOffset = 0;
 
 void openFile(const char *fileName) {
     if (targetFile != nullptr) {
@@ -23,6 +36,7 @@ void openFile(const char *fileName) {
         return;
     }
     targetFile = file;
+    fileOffset = 0;
 }
 
 void writeFile(const char *format, ...) {
@@ -44,6 +58,26 @@ void writeFileB(const void *ptr, size_t sizeInByte) {
     }
     fwrite(ptr, 1, sizeInByte, targetFile);
     fflush(targetFile);
+    fileOffset += sizeInByte;
+}
+
+uint32_t getCurrentFileOffset() {
+    return fileOffset;
+}
+
+void writeEmptyAlignment(uint32_t alignment) {
+    int targetOffset = alignTo(fileOffset, alignment);
+    int fillByte = targetOffset - fileOffset;
+    if (fillByte == 0) {
+        return;
+    }
+    char *emptyData = (char *) malloc(fillByte);
+    memset(emptyData, 0, fillByte);
+    writeFileB(emptyData, fillByte);
+    if (targetOffset != fileOffset) {
+        loge(FILE_TAG, "can not fill empty to alignment:%d: %d->%d", alignment, fileOffset, targetOffset);
+        exit(-1);
+    }
 }
 
 void closeFile() {

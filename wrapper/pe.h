@@ -14,14 +14,14 @@
 
 // 定义 PE 文件头中的 Machine 字段枚举
 enum {
-    IMAGE_FILE_MACHINE_UNKNOWN     = 0x0,      // 未知架构
-    IMAGE_FILE_MACHINE_AMD64       = 0x8664,   // x64 (AMD64/EM64T)
-    IMAGE_FILE_MACHINE_ARM         = 0x1c0,    // ARM 小端
-    IMAGE_FILE_MACHINE_ARM64       = 0xaa64,   // ARM64 (AArch64)
-    IMAGE_FILE_MACHINE_I386        = 0x14c,    // Intel 386
-    IMAGE_FILE_MACHINE_RISCV32     = 0x5032,   // RISC-V 32 位
-    IMAGE_FILE_MACHINE_RISCV64     = 0x5064,   // RISC-V 64 位
-    IMAGE_FILE_MACHINE_RISCV128    = 0x5128,   // RISC-V 128 位
+    IMAGE_FILE_MACHINE_UNKNOWN = 0x0,      // 未知架构
+    IMAGE_FILE_MACHINE_AMD64 = 0x8664,   // x64 (AMD64/EM64T)
+    IMAGE_FILE_MACHINE_ARM = 0x1c0,    // ARM 小端
+    IMAGE_FILE_MACHINE_ARM64 = 0xaa64,   // ARM64 (AArch64)
+    IMAGE_FILE_MACHINE_I386 = 0x14c,    // Intel 386
+    IMAGE_FILE_MACHINE_RISCV32 = 0x5032,   // RISC-V 32 位
+    IMAGE_FILE_MACHINE_RISCV64 = 0x5064,   // RISC-V 64 位
+    IMAGE_FILE_MACHINE_RISCV128 = 0x5128,   // RISC-V 128 位
 } MachineType;
 
 enum {
@@ -35,45 +35,22 @@ enum {
 
 // 定义 Characteristics 枚举
 enum {
-    IMAGE_FILE_RELOCS_STRIPPED         = 0x0001, // 没有重定位信息
-    IMAGE_FILE_EXECUTABLE_IMAGE        = 0x0002, // 文件是可执行的
-    IMAGE_FILE_LINE_NUMS_STRIPPED      = 0x0004, // 没有行号信息
-    IMAGE_FILE_LOCAL_SYMS_STRIPPED     = 0x0008, // 没有本地符号信息
-    IMAGE_FILE_AGGRESSIVE_WS_TRIM      = 0x0010, // 已废弃
-    IMAGE_FILE_LARGE_ADDRESS_AWARE     = 0x0020, // 应用可以使用大于 2GB 的地址空间
-    IMAGE_FILE_BYTES_REVERSED_LO       = 0x0080, // 小端字节序（已废弃）
-    IMAGE_FILE_32BIT_MACHINE           = 0x0100, // 文件为 32 位格式
-    IMAGE_FILE_DEBUG_STRIPPED          = 0x0200, // 已剥离调试信息
+    IMAGE_FILE_RELOCS_STRIPPED = 0x0001, // 没有重定位信息
+    IMAGE_FILE_EXECUTABLE_IMAGE = 0x0002, // 文件是可执行的
+    IMAGE_FILE_LINE_NUMS_STRIPPED = 0x0004, // 没有行号信息
+    IMAGE_FILE_LOCAL_SYMS_STRIPPED = 0x0008, // 没有本地符号信息
+    IMAGE_FILE_AGGRESSIVE_WS_TRIM = 0x0010, // 已废弃
+    IMAGE_FILE_LARGE_ADDRESS_AWARE = 0x0020, // 应用可以使用大于 2GB 的地址空间
+    IMAGE_FILE_BYTES_REVERSED_LO = 0x0080, // 小端字节序（已废弃）
+    IMAGE_FILE_32BIT_MACHINE = 0x0100, // 文件为 32 位格式
+    IMAGE_FILE_DEBUG_STRIPPED = 0x0200, // 已剥离调试信息
     IMAGE_FILE_REMOVABLE_RUN_FROM_SWAP = 0x0400, // 从可移动设备运行时，优先加载到交换空间
-    IMAGE_FILE_NET_RUN_FROM_SWAP       = 0x0800, // 从网络运行时，优先加载到交换空间
-    IMAGE_FILE_SYSTEM                  = 0x1000, // 系统文件（如驱动程序）
-    IMAGE_FILE_DLL                     = 0x2000, // 文件是动态链接库（DLL）
-    IMAGE_FILE_UP_SYSTEM_ONLY          = 0x4000, // 仅支持单处理器系统
-    IMAGE_FILE_BYTES_REVERSED_HI       = 0x8000  // 大端字节序（已废弃）
+    IMAGE_FILE_NET_RUN_FROM_SWAP = 0x0800, // 从网络运行时，优先加载到交换空间
+    IMAGE_FILE_SYSTEM = 0x1000, // 系统文件（如驱动程序）
+    IMAGE_FILE_DLL = 0x2000, // 文件是动态链接库（DLL）
+    IMAGE_FILE_UP_SYSTEM_ONLY = 0x4000, // 仅支持单处理器系统
+    IMAGE_FILE_BYTES_REVERSED_HI = 0x8000  // 大端字节序（已废弃）
 } PECharacteristics;
-
-// 定义 DOS 头结构
-typedef struct {
-    uint16_t e_magic;    // DOS 魔术字节 (0x5A4D, "MZ")
-    uint16_t e_cblp;
-    uint16_t e_cp;
-    uint16_t e_crlc;
-    uint16_t e_cparhdr;
-    uint16_t e_minalloc;
-    uint16_t e_maxalloc;
-    uint16_t e_ss;
-    uint16_t e_sp;
-    uint16_t e_csum;
-    uint16_t e_ip;
-    uint16_t e_cs;
-    uint16_t e_lfarlc;
-    uint16_t e_ovno;
-    uint16_t e_res[4];
-    uint16_t e_oemid;
-    uint16_t e_oeminfo;
-    uint16_t e_res2[10];
-    uint32_t e_lfanew;   // PE 头的偏移地址
-} DOSHeader;
 
 // 定义 COFF 头结构
 typedef struct {
@@ -85,9 +62,15 @@ typedef struct {
     uint32_t NumberOfSymbols;
     uint16_t SizeOfOptionalHeader;
     uint16_t Characteristics;
-} COFFHeader;
+} CoffHeader;
 
-// 定义可选头（仅支持 PE32+ 格式）
+// 定义数据目录结构
+typedef struct {
+    uint32_t VirtualAddress; // 数据目录的 RVA
+    uint32_t Size;           // 数据目录的大小
+} DataDirectory;
+
+// 修正后的 OptionalHeader 结构体（支持 PE32+）
 typedef struct {
     uint16_t Magic;               // 0x20B 表示 PE32+
     uint8_t MajorLinkerVersion;
@@ -97,7 +80,7 @@ typedef struct {
     uint32_t SizeOfUninitializedData;
     uint32_t AddressOfEntryPoint;
     uint32_t BaseOfCode;
-    uint64_t ImageBase;
+    uint64_t ImageBase;           // 8字节（PE32+）
     uint32_t SectionAlignment;
     uint32_t FileAlignment;
     uint16_t MajorOperatingSystemVersion;
@@ -106,25 +89,75 @@ typedef struct {
     uint16_t MinorImageVersion;
     uint16_t MajorSubsystemVersion;
     uint16_t MinorSubsystemVersion;
-    uint32_t Win32VersionValue;
+    uint32_t Win32VersionValue;   // 保留，必须为 0
     uint32_t SizeOfImage;
     uint32_t SizeOfHeaders;
     uint32_t CheckSum;
     uint16_t Subsystem;
     uint16_t DllCharacteristics;
-    uint64_t SizeOfStackReserve;
-    uint64_t SizeOfStackCommit;
-    uint64_t SizeOfHeapReserve;
-    uint64_t SizeOfHeapCommit;
-    uint32_t LoaderFlags;
-    uint32_t NumberOfRvaAndSizes;
+    uint64_t SizeOfStackReserve;  // 栈保留大小
+    uint64_t SizeOfStackCommit;   // 栈提交大小
+    uint64_t SizeOfHeapReserve;   // 堆保留大小
+    uint64_t SizeOfHeapCommit;    // 堆提交大小
+    uint32_t LoaderFlags;         // 保留，必须为 0
+    uint32_t NumberOfRvaAndSizes; // 数据目录数量（通常为 16）
+    DataDirectory DataDirectory[16]; // 数据目录数组
 } OptionalHeader;
 
-// 定义数据目录（如果需要）
-typedef struct {
-    uint32_t VirtualAddress;
-    uint32_t Size;
-} DataDirectory;
+#include <stdint.h>
+
+// 定义 SectionHeader 的 Characteristics 枚举
+typedef enum {
+    // 保留字段
+    IMAGE_SCN_RESERVED_00000001 = 0x00000001,  // 保留，必须为 0
+    IMAGE_SCN_RESERVED_00000002 = 0x00000002,  // 保留，必须为 0
+    IMAGE_SCN_RESERVED_00000004 = 0x00000004,  // 保留，必须为 0
+
+    // 节内容类型
+    IMAGE_SCN_TYPE_NO_PAD       = 0x00000008,  // 不进行字节填充对齐
+    IMAGE_SCN_CNT_CODE          = 0x00000020,  // 包含代码
+    IMAGE_SCN_CNT_INITIALIZED_DATA = 0x00000040, // 包含已初始化数据
+    IMAGE_SCN_CNT_UNINITIALIZED_DATA = 0x00000080, // 包含未初始化数据
+
+    // 节的特性
+    IMAGE_SCN_LNK_OTHER         = 0x00000100,  // 保留，必须为 0
+    IMAGE_SCN_LNK_INFO          = 0x00000200,  // 包含注释或其他信息
+    IMAGE_SCN_LNK_REMOVE        = 0x00000800,  // 在链接后可移除
+    IMAGE_SCN_LNK_COMDAT        = 0x00001000,  // 包含 COMDAT 数据
+
+    // 内存布局
+    IMAGE_SCN_GPREL             = 0x00008000,  // 包含全局指针相对数据
+    IMAGE_SCN_MEM_FARDATA       = 0x00008000,  // 远程数据段
+    IMAGE_SCN_MEM_PURGEABLE     = 0x00020000,  // 可丢弃
+    IMAGE_SCN_MEM_16BIT         = 0x00020000,  // 16 位段
+    IMAGE_SCN_MEM_LOCKED        = 0x00040000,  // 已锁定段
+    IMAGE_SCN_MEM_PRELOAD       = 0x00080000,  // 预加载段
+
+    // 节权限
+    IMAGE_SCN_ALIGN_1BYTES      = 0x00100000,  // 1 字节对齐
+    IMAGE_SCN_ALIGN_2BYTES      = 0x00200000,  // 2 字节对齐
+    IMAGE_SCN_ALIGN_4BYTES      = 0x00300000,  // 4 字节对齐
+    IMAGE_SCN_ALIGN_8BYTES      = 0x00400000,  // 8 字节对齐
+    IMAGE_SCN_ALIGN_16BYTES     = 0x00500000,  // 16 字节对齐
+    IMAGE_SCN_ALIGN_32BYTES     = 0x00600000,  // 32 字节对齐
+    IMAGE_SCN_ALIGN_64BYTES     = 0x00700000,  // 64 字节对齐
+    IMAGE_SCN_ALIGN_128BYTES    = 0x00800000,  // 128 字节对齐
+    IMAGE_SCN_ALIGN_256BYTES    = 0x00900000,  // 256 字节对齐
+    IMAGE_SCN_ALIGN_512BYTES    = 0x00A00000,  // 512 字节对齐
+    IMAGE_SCN_ALIGN_1024BYTES   = 0x00B00000,  // 1024 字节对齐
+    IMAGE_SCN_ALIGN_2048BYTES   = 0x00C00000,  // 2048 字节对齐
+    IMAGE_SCN_ALIGN_4096BYTES   = 0x00D00000,  // 4096 字节对齐
+    IMAGE_SCN_ALIGN_8192BYTES   = 0x00E00000,  // 8192 字节对齐
+
+    IMAGE_SCN_LNK_NRELOC_OVFL   = 0x01000000,  // 重定位条目数超过 16 位限制
+    IMAGE_SCN_MEM_DISCARDABLE   = 0x02000000,  // 可丢弃节
+    IMAGE_SCN_MEM_NOT_CACHED    = 0x04000000,  // 不可缓存
+    IMAGE_SCN_MEM_NOT_PAGED     = 0x08000000,  // 不可分页
+    IMAGE_SCN_MEM_SHARED        = 0x10000000,  // 可共享
+    IMAGE_SCN_MEM_EXECUTE       = 0x20000000,  // 可执行
+    IMAGE_SCN_MEM_READ          = 0x40000000,  // 可读
+    IMAGE_SCN_MEM_WRITE         = 0x80000000   // 可写
+} SectionCharacteristics;
 
 
 // 定义节表结构
@@ -153,8 +186,10 @@ typedef struct {
     uint32_t Alignment;          // 对齐方式
 } ProgramSegment;
 
+size_t getPeHeaderSize();
+
 // 创建并填充 PE 头部
-void *createPEHeader(uint16_t machine,
+void *createPeHeader(uint16_t machine,
                      uint16_t numberOfSections,
                      uint32_t sizeOfCode,
                      uint32_t entryPoint,
