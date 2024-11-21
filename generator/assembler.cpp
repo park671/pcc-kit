@@ -7,9 +7,11 @@
 #include "arm64/binary_arm64.h"
 #include "arm64/linux_syscall.h"
 #include "arm64/windows_syscall.h"
+#include "arm64/macos_syscall.h"
 #include "elf.h"
 #include "file.h"
 #include "pe.h"
+#include "macho.h"
 
 static const char *ASSEMBLER_TAG = "assembler";
 
@@ -155,6 +157,88 @@ void generatePeArm64(Mir *mir,
     logd(ASSEMBLER_TAG, "pe arm64 generation finish.");
 }
 
+void generateMachoArm64(Mir *mir,
+                     int sharedLibrary,
+                     const char *outputFileName) {
+    if (outputFileName == nullptr) {
+        outputFileName = "output.macho";
+    }
+    openFile(outputFileName);
+
+    int currentOffset = 0;
+    int loadCommandCount = 0;
+    int sectionCount = 1; // Initial section count (__TEXT segment)
+
+    initMachOProgramStart();
+
+    // Generate ARM64 target code
+    int textSectionSize = generateArm64Target(mir);
+    currentOffset += sizeof(struct mach_header_64);
+
+    // Calculate offsets and counts
+    loadCommandCount += 2; // One LC_SEGMENT_64 and one LC_SYMTAB
+    currentOffset += loadCommandCount * sizeof(struct segment_command_64);
+    int textSectionOffset = currentOffset;
+    currentOffset += textSectionSize;
+    int stringTableOffset = currentOffset;
+
+    // Set program entry point
+    uint64_t programEntry = 0x100000000 + textSectionOffset;
+
+    // Relocate binary
+    relocateBinary(0);
+    InstBuffer *instBuffer = getEmittedInstBuffer();
+
+    // Create Mach-O header
+    struct mach_header_64 *machHeader = createMachHeader64(
+            CPU_TYPE_ARM64,
+            CPU_SUBTYPE_ARM64_ALL,
+            MH_EXECUTE,
+            loadCommandCount,
+            loadCommandCount * sizeof(struct segment_command_64),
+            MH_NOUNDEFS | MH_PIE);
+
+    // Create __TEXT segment
+    struct segment_command_64 *textSegment = createSegmentCommand64(
+            "__TEXT",
+            0x100000000,
+            0x1000,
+            textSectionOffset,
+            textSectionSize,
+            VM_PROT_READ | VM_PROT_EXECUTE,
+            VM_PROT_READ | VM_PROT_EXECUTE,
+            1,
+            0);
+
+    // Create __text section
+    struct section_64 *textSection = createSection64(
+            "__text",
+            "__TEXT",
+            0x100000000 + textSectionOffset,
+            textSectionSize,
+            textSectionOffset,
+            4,
+            0,
+            0,
+            S_ATTR_PURE_INSTRUCTIONS | S_ATTR_SOME_INSTRUCTIONS);
+
+    // Create symbol table command
+    struct symtab_command *symtabCommand = createSymtabCommand(
+            stringTableOffset, // Offset of string table
+            0,                 // Number of symbols
+            stringTableOffset, // Offset of string table
+            0);                // Size of string table
+
+    writeFileB(machHeader, sizeof(struct mach_header_64));
+    writeFileB(textSegment, sizeof(struct segment_command_64));
+    writeFileB(textSection, sizeof(struct section_64));
+    writeFileB(instBuffer->result, instBuffer->size);
+    const char *stringTable = "\0";
+    writeFileB(stringTable, 1);
+
+    logd(ASSEMBLER_TAG, "mach-o arm64 generation finish.");
+}
+
 void generateTargetFile(
         Mir *mir,
         Arch arch,
@@ -180,6 +264,20 @@ void generateTargetFile(
         switch (arch) {
             case ARCH_ARM64: {
                 generatePeArm64(mir, sharedLibrary, outputFileName);
+                break;
+            }
+            case ARCH_X86_64: {
+                loge(ASSEMBLER_TAG, "not impl platform yet!");
+                break;
+            }
+            default: {
+                loge(ASSEMBLER_TAG, "unsupported architecture!");
+            }
+        }
+    } else if (platform == PLATFORM_MACOS) {
+        switch (arch) {
+            case ARCH_ARM64: {
+                generateMachoArm64(mir, sharedLibrary, outputFileName);
                 break;
             }
             case ARCH_X86_64: {
