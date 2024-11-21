@@ -190,8 +190,9 @@ _lb_1:
 ```
 
 ![E01cFLKrZm](https://github.com/user-attachments/assets/c253231b-b8bc-47bb-97fd-57ef2576743a)
-2024-10-18已支持linux aarch64的elf封装
+2024-10-18已支持aarch64指令集linux elf封装
 
+2024-11-21已支持aarch64指令集windows pe封装
 
 ### how to build
 
