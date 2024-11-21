@@ -5,6 +5,8 @@
 #include "logger.h"
 #include "arm64/assembler_arm64.h"
 #include "arm64/binary_arm64.h"
+#include "arm64/linux_syscall.h"
+#include "arm64/windows_syscall.h"
 #include "elf.h"
 #include "file.h"
 #include "pe.h"
@@ -22,7 +24,7 @@ void generateElfArm64(Mir *mir,
     int currentOffset = 0;
     int programHeaderCount = 0;
     int sectionHeaderCount = 1;//shstrtab
-
+    initLinuxArm64ProgramStart();
     int sectionCount = generateArm64Target(mir);
     currentOffset += sizeof(Elf64_Ehdr);
     programHeaderCount += sectionCount;
@@ -107,6 +109,7 @@ void generatePeArm64(Mir *mir,
 
     int currentOffset = 0;
     // 1. 生成指令缓冲区
+    initWindowsArm64ProgramStart();
     int sectionCount = generateArm64Target(mir); // 根据 mir 生成指令
     relocateBinary(0);
     InstBuffer *instBuffer = getEmittedInstBuffer(); // 获取生成的指令缓冲区

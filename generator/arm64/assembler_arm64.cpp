@@ -1063,26 +1063,14 @@ void generateData(MirData *mirData) {
     //todo
 }
 
-void initProgramStart() {
-    emitLabel("_start");
-    binaryOp2(INST_MOV, 1, X29, 0, true);
-    binaryOp2(INST_MOV, 1, X30, 0, true);
-    binaryOpBranch(INST_BL, UNUSED, "main");
-    //keep the "main" ret value in X0
-    binaryOp2(INST_MOV, 1, X8, SYS_EXIT, true);
-    binaryOpSvc(INST_SVC, 0);
-}
-
 int generateArm64Target(Mir *mir) {
     logd(ARM64_TAG, "arm64 target generation...");
-    initProgramStart();
     //.text
     MirMethod *mirMethod = mir->mirMethod;
     while (mirMethod != nullptr) {
         generateText(mirMethod);
         mirMethod = mirMethod->next;
     }
-
     //.data
     if (mir->mirData != nullptr) {
         generateSection(SECTION_DATA);

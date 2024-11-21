@@ -420,7 +420,7 @@ void binaryOpStoreLoad(Arm64Inst inst, uint32_t is64Bit, Operand reg1, Operand r
 }
 
 
-void movInteger(Operand reg, uint64_t imm) {
+void movInteger(Operand reg, int64_t imm) {
     uint64_t mark = 0xffff;//use for check imm size
     int e;
     if (!(imm & ~mark)) {
@@ -430,6 +430,11 @@ void movInteger(Operand reg, uint64_t imm) {
     }
     if (!(imm & ~(mark << 16))) {
         emitInst(0x52a00000 | reg | imm >> 11); // movz w(reg),#(imm >> 16),lsl #16
+        return;
+    }
+    if (imm == -1) {
+        emitInst(0x92800000);// movn x0 (~#0); ~#0 == 0xFFFF... = #-1
+        //fixme: this is a special case.
         return;
     }
     loge(BIN_TAG, "big imm (>16bit) need .data impl");
@@ -644,7 +649,7 @@ void binaryOpNop(Arm64Inst inst) {
 /**
  *
  * @param inst
- * @param sysCallImm always "0" on linux aarch64
+ * @param sysCallImm ignore on linux, must be set on windows!
  */
 void binaryOpSvc(Arm64Inst inst, uint32_t sysCallImm) {
     if (inst != INST_SVC) {

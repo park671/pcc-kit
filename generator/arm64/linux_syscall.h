@@ -5,7 +5,10 @@
 #ifndef PCC_LINUX_SYSCALL_H
 #define PCC_LINUX_SYSCALL_H
 
-enum SysCallNumber{
+#include "binary_arm64.h"
+#include "register_arm64.h"
+
+enum LinuxArm64SysCallNumber{
     SYS_READ           = 63,
     SYS_WRITE          = 64,
     SYS_OPEN           = 56,
@@ -37,5 +40,6 @@ enum SysCallNumber{
     // 根据需要添加其他系统调用
 };
 
+void initLinuxArm64ProgramStart();
 
 #endif //PCC_LINUX_SYSCALL_H

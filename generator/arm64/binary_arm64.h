@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-typedef uint32_t Operand;
+typedef int64_t Operand;
 
 typedef uint32_t Inst;
 
