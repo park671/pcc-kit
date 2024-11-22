@@ -15,8 +15,9 @@
 #define VM_PROT_EXECUTE ((int) 0x04)      /* execute permission */
 
 
-#define S_ATTR_PURE_INSTRUCTIONS 0x80000000	// section contains only true machine instructions
-#define S_ATTR_SOME_INSTRUCTIONS 0x00000400	// section contains some machine instructions
+#define    S_REGULAR        0x0    /* regular section */
+#define S_ATTR_PURE_INSTRUCTIONS 0x80000000    // section contains only true machine instructions
+#define S_ATTR_SOME_INSTRUCTIONS 0x00000400    // section contains some machine instructions
 /*
  * The 64-bit mach header appears at the very beginning of object files for
  * 64-bit architectures.
@@ -57,46 +58,11 @@ typedef enum {
 typedef enum {
     // Generic subtype wildcard
     CPU_SUBTYPE_ANY = -1,      /* Wildcard */
-    CPU_SUBTYPE_MULTIPLE = -1,      /* Multiple subtypes */
-    CPU_SUBTYPE_LITTLE_ENDIAN = 0,      /* Little endian */
-    CPU_SUBTYPE_BIG_ENDIAN = 1,       /* Big endian */
-
     // x86 and x86_64
     CPU_SUBTYPE_I386_ALL = 3,       /* All x86 models */
-    CPU_SUBTYPE_386 = 3,       /* Intel 386 */
-    CPU_SUBTYPE_486 = 4,       /* Intel 486 */
-    CPU_SUBTYPE_486SX = 4 + 128, /* Intel 486SX */
-    CPU_SUBTYPE_PENT = 5,       /* Intel Pentium */
-    CPU_SUBTYPE_PENTPRO = 6,       /* Intel Pentium Pro */
-    CPU_SUBTYPE_PENTII_M3 = 7,       /* Intel Pentium II M3 */
-    CPU_SUBTYPE_PENTII_M5 = 8,       /* Intel Pentium II M5 */
-    CPU_SUBTYPE_CELERON = 9,       /* Intel Celeron */
-    CPU_SUBTYPE_CELERON_MOBILE = 10,    /* Intel Celeron Mobile */
-    CPU_SUBTYPE_PENTIUM_3 = 11,      /* Intel Pentium III */
-    CPU_SUBTYPE_PENTIUM_3_M = 12,      /* Intel Pentium III Mobile */
-    CPU_SUBTYPE_PENTIUM_4 = 13,      /* Intel Pentium 4 */
-    CPU_SUBTYPE_ITANIUM = 14,      /* Intel Itanium */
-    CPU_SUBTYPE_ITANIUM_2 = 15,      /* Intel Itanium 2 */
-    CPU_SUBTYPE_XEON = 16,      /* Intel Xeon */
-    CPU_SUBTYPE_XEON_MP = 17,      /* Intel Xeon MP */
-
-    // ARM
-    CPU_SUBTYPE_ARM_ALL = 0,       /* All ARM architectures */
-    CPU_SUBTYPE_ARM_V4T = 5,       /* ARMv4T */
-    CPU_SUBTYPE_ARM_V6 = 6,       /* ARMv6 */
-    CPU_SUBTYPE_ARM_V5TEJ = 7,       /* ARMv5TEJ */
-    CPU_SUBTYPE_ARM_XSCALE = 8,       /* ARM XScale */
-    CPU_SUBTYPE_ARM_V7 = 9,       /* ARMv7 */
-    CPU_SUBTYPE_ARM_V7F = 10,      /* ARMv7 with floating point */
-    CPU_SUBTYPE_ARM_V7S = 11,      /* ARMv7S (iPhone 5) */
-    CPU_SUBTYPE_ARM_V7K = 12,      /* ARMv7K (watchOS) */
-    CPU_SUBTYPE_ARM_V8 = 13,      /* ARMv8 */
-    CPU_SUBTYPE_ARM_V8_1 = 14,      /* ARMv8.1 */
 
     // ARM64
     CPU_SUBTYPE_ARM64_ALL = 0,       /* All ARM64 architectures */
-    CPU_SUBTYPE_ARM64_V8 = 1,       /* ARM64 v8 */
-    CPU_SUBTYPE_ARM64E = 2,       /* ARM64E (with pointer authentication) */
 } CpuSubType;
 
 typedef enum {
@@ -147,6 +113,14 @@ struct load_command {
     uint32_t cmd;        /* type of load command */
     uint32_t cmdsize;    /* total size of command in bytes */
 };
+
+struct entry_point_command {
+    uint32_t cmd;    /* LC_MAIN only used in MH_EXECUTE filetypes */
+    uint32_t cmdsize;    /* 24 */
+    uint64_t entryoff;    /* file (__TEXT) offset of main() */
+    uint64_t stacksize;/* if not zero, initial stack size */
+};
+
 // 定义 LC_REQ_DYLD 常量
 #define LC_REQ_DYLD 0x80000000
 
@@ -279,5 +253,8 @@ mach_header_64 *createMachHeader64(uint32_t cputype,
                                    uint32_t ncmds,
                                    uint32_t sizeofcmds,
                                    uint32_t flags);
+
+entry_point_command *createEntryPointCommand(uint64_t entryoff,
+                                             uint64_t stacksize);
 
 #endif //PCC_MACHO_H

@@ -13,7 +13,7 @@
 static const char *FILE_TAG = "file";
 
 // 将 value 对齐到 alignment 的倍数
-int alignTo(int value, int alignment) {
+uint64_t alignTo(uint64_t value, uint64_t alignment) {
     int remainder = value % alignment;
     if (remainder == 0) {
         return value; // 已对齐

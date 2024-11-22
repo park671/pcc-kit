@@ -3,19 +3,22 @@
 //
 
 #include "macho.h"
+#include "logger.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+static const char *MACHO_TAG = "macho";
+
 mach_header_64 *createMachHeader64(uint32_t cputype,
-                                          uint32_t cpusubtype,
-                                          uint32_t filetype,
-                                          uint32_t ncmds,
-                                          uint32_t sizeofcmds,
-                                          uint32_t flags) {
+                                   uint32_t cpusubtype,
+                                   uint32_t filetype,
+                                   uint32_t ncmds,
+                                   uint32_t sizeofcmds,
+                                   uint32_t flags) {
     // 分配内存
-    mach_header_64 *header = (mach_header_64 *)malloc(sizeof(mach_header_64));
+    mach_header_64 *header = (mach_header_64 *) malloc(sizeof(mach_header_64));
 
     // 检查分配是否成功
     if (header == NULL) {
@@ -37,16 +40,16 @@ mach_header_64 *createMachHeader64(uint32_t cputype,
 }
 
 segment_command_64 *createSegmentCommand64(const char *segname,
-                                                  uint64_t vmaddr,
-                                                  uint64_t vmsize,
-                                                  uint64_t fileoff,
-                                                  uint64_t filesize,
-                                                  uint32_t maxprot,
-                                                  uint32_t initprot,
-                                                  uint32_t nsects,
-                                                  uint32_t flags) {
+                                           uint64_t vmaddr,
+                                           uint64_t vmsize,
+                                           uint64_t fileoff,
+                                           uint64_t filesize,
+                                           uint32_t maxprot,
+                                           uint32_t initprot,
+                                           uint32_t nsects,
+                                           uint32_t flags) {
     // 分配内存
-    segment_command_64 *segment = (segment_command_64 *)malloc(sizeof(segment_command_64));
+    segment_command_64 *segment = (segment_command_64 *) malloc(sizeof(segment_command_64));
 
     // 检查分配是否成功
     if (segment == NULL) {
@@ -71,11 +74,11 @@ segment_command_64 *createSegmentCommand64(const char *segname,
 }
 
 symtab_command *createSymtabCommand(uint32_t symoff,
-                                           uint32_t nsyms,
-                                           uint32_t stroff,
-                                           uint32_t strsize) {
+                                    uint32_t nsyms,
+                                    uint32_t stroff,
+                                    uint32_t strsize) {
     // 分配内存
-    symtab_command *symtab = (symtab_command *)malloc(sizeof(symtab_command));
+    symtab_command *symtab = (symtab_command *) malloc(sizeof(symtab_command));
 
     // 检查分配是否成功
     if (symtab == NULL) {
@@ -95,16 +98,16 @@ symtab_command *createSymtabCommand(uint32_t symoff,
 }
 
 section_64 *createSection64(const char *sectname,
-                                   const char *segname,
-                                   uint64_t addr,
-                                   uint64_t size,
-                                   uint32_t offset,
-                                   uint32_t align,
-                                   uint32_t reloff,
-                                   uint32_t nreloc,
-                                   uint32_t flags) {
+                            const char *segname,
+                            uint64_t addr,
+                            uint64_t size,
+                            uint32_t offset,
+                            uint32_t align,
+                            uint32_t reloff,
+                            uint32_t nreloc,
+                            uint32_t flags) {
     // 分配内存
-    section_64 *section = (section_64 *)malloc(sizeof(section_64));
+    section_64 *section = (section_64 *) malloc(sizeof(section_64));
 
     // 检查分配是否成功
     if (section == NULL) {
@@ -129,3 +132,21 @@ section_64 *createSection64(const char *sectname,
     return section; // 返回已填充的区块指针
 }
 
+entry_point_command *createEntryPointCommand(uint64_t entryoff, uint64_t stacksize) {
+    // 分配内存
+    entry_point_command *entryPointCmd = (entry_point_command *) malloc(sizeof(entry_point_command));
+
+    // 检查分配是否成功
+    if (entryPointCmd == nullptr) {
+        loge(MACHO_TAG, "Error: Memory allocation failed\n");
+        return nullptr;
+    }
+
+    // 填充 entry_point_command 的字段
+    entryPointCmd->cmd = LC_MAIN;           // 设置命令类型为 LC_MAIN
+    entryPointCmd->cmdsize = sizeof(entry_point_command); // 命令大小为 24 字节
+    entryPointCmd->entryoff = entryoff;     // 程序入口偏移（从 __TEXT 段的起始位置计算）
+    entryPointCmd->stacksize = stacksize;   // 初始栈大小（如果为 0，则使用默认值）
+
+    return entryPointCmd; // 返回已填充的 entry_point_command 指针
+}
