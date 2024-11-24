@@ -21,9 +21,9 @@ mach_header_64 *createMachHeader64(uint32_t cputype,
     mach_header_64 *header = (mach_header_64 *) malloc(sizeof(mach_header_64));
 
     // 检查分配是否成功
-    if (header == NULL) {
+    if (header == nullptr) {
         printf("Memory allocation failed\n");
-        return NULL;
+        return nullptr;
     }
 
     // 填充 Mach-O 头部字段
@@ -52,9 +52,9 @@ segment_command_64 *createSegmentCommand64(const char *segname,
     segment_command_64 *segment = (segment_command_64 *) malloc(sizeof(segment_command_64));
 
     // 检查分配是否成功
-    if (segment == NULL) {
+    if (segment == nullptr) {
         printf("Memory allocation failed\n");
-        return NULL;
+        return nullptr;
     }
 
     // 填充段命令字段
@@ -81,9 +81,9 @@ symtab_command *createSymtabCommand(uint32_t symoff,
     symtab_command *symtab = (symtab_command *) malloc(sizeof(symtab_command));
 
     // 检查分配是否成功
-    if (symtab == NULL) {
+    if (symtab == nullptr) {
         printf("Memory allocation failed\n");
-        return NULL;
+        return nullptr;
     }
 
     // 填充符号表命令字段
@@ -110,9 +110,9 @@ section_64 *createSection64(const char *sectname,
     section_64 *section = (section_64 *) malloc(sizeof(section_64));
 
     // 检查分配是否成功
-    if (section == NULL) {
+    if (section == nullptr) {
         printf("Memory allocation failed\n");
-        return NULL;
+        return nullptr;
     }
 
     // 填充区块字段

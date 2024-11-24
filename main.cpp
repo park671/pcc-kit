@@ -12,8 +12,8 @@
 
 #define MAIN_TAG "main"
 
-static const char *outputFileName = NULL;
-static const char *sourceFileName = NULL;
+static const char *outputFileName = nullptr;
+static const char *sourceFileName = nullptr;
 static Arch targetArch = ARCH_ARM64;
 static Platform targetPlatform = PLATFORM_LINUX;
 static int optimizationLevel = -1;

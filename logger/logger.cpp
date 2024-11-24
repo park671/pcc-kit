@@ -10,7 +10,7 @@
 char *get_current_time_str() {
     static char buffer[30];
     struct timeval tv;
-    gettimeofday(&tv, NULL);
+    gettimeofday(&tv, nullptr);
 
     struct tm *local = localtime(&tv.tv_sec);
 

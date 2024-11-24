@@ -5,7 +5,6 @@
 #include "elf.h"
 #include "file.h"
 #include "mspace.h"
-#include <string.h>
 #include "assembler.h"
 #include "logger.h"
 
@@ -26,9 +25,9 @@ Elf64_Ehdr *createElfHeader(uint16_t type,
     Elf64_Ehdr *ehdr = (Elf64_Ehdr *) malloc(sizeof(Elf64_Ehdr));
 
     // 检查分配是否成功
-    if (ehdr == NULL) {
+    if (ehdr == nullptr) {
         printf("Memory allocation failed\n");
-        return NULL;
+        return nullptr;
     }
 
     // 填充 e_ident 魔术字节和标识信息
@@ -107,9 +106,9 @@ Elf64_Shdr *createSectionHeader(uint32_t name,
     Elf64_Shdr *shdr = (Elf64_Shdr *) malloc(sizeof(Elf64_Shdr));
 
     // 检查分配是否成功
-    if (shdr == NULL) {
-        fprintf(stderr, "Error: memory allocation failed\n");
-        return NULL;
+    if (shdr == nullptr) {
+        loge(ELF_TAG, "Error: memory allocation failed\n");
+        return nullptr;
     }
 
     // 填充节头字段

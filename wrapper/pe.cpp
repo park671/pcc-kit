@@ -42,9 +42,9 @@ OptionalHeader *createOptionalHeader(uint16_t numberOfSections,
                                      uint32_t fileAlignment) {
     // 分配可选头内存
     OptionalHeader *optionalHeader = (OptionalHeader *) malloc(sizeof(OptionalHeader));
-    if (optionalHeader == NULL) {
+    if (optionalHeader == nullptr) {
         loge(PE_TAG, "Memory allocation for Optional header failed\n");
-        return NULL;
+        return nullptr;
     }
 
     // 填充可选头
@@ -153,9 +153,9 @@ SectionHeader *createSectionHeader(const char *name,
     SectionHeader *sectionheader = (SectionHeader *) malloc(sizeof(SectionHeader));
 
     // 检查分配是否成功
-    if (sectionheader == NULL) {
-        fprintf(stderr, "Error: memory allocation failed\n");
-        return NULL;
+    if (sectionheader == nullptr) {
+        loge(PE_TAG, "Error: memory allocation failed\n");
+        return nullptr;
     }
 
     // 填充节头字段
@@ -186,9 +186,9 @@ ProgramSegment *createProgramSegment(uint32_t type,
     ProgramSegment *segment = (ProgramSegment *) malloc(sizeof(ProgramSegment));
 
     // 检查分配是否成功
-    if (segment == NULL) {
-        fprintf(stderr, "Error: memory allocation failed\n");
-        return NULL;
+    if (segment == nullptr) {
+        loge(PE_TAG, "Error: memory allocation failed\n");
+        return nullptr;
     }
 
     // 填充段信息字段
