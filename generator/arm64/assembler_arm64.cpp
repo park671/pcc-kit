@@ -480,13 +480,13 @@ void generateCodes(MirCode *mirCode) {
                     greaterRegisterWidth
             );
 
-            MirOperand *mirOperand = &mir2->fromValue;
-            if (mirOperand->type.primitiveType == OPERAND_IDENTITY) {
-                int fromRegIndex = isVarExistInCommonReg(mirOperand->identity);
+            MirOperand *fromValueMirOperand = &mir2->fromValue;
+            if (fromValueMirOperand->type.primitiveType == OPERAND_IDENTITY) {
+                int fromRegIndex = isVarExistInCommonReg(fromValueMirOperand->identity);
                 if (fromRegIndex == -1) {
-                    int stackOffset = getVarFromStack(mirOperand->identity);
+                    int stackOffset = getVarFromStack(fromValueMirOperand->identity);
                     if (stackOffset == -1) {
-                        loge(ARM64_TAG, "internal error: can not found var %s on stack", mirOperand->identity);
+                        loge(ARM64_TAG, "internal error: can not found var %s on stack", fromValueMirOperand->identity);
                     }
                     binaryOpStoreLoad(
                             INST_LDR,
@@ -504,7 +504,7 @@ void generateCodes(MirCode *mirCode) {
                               false);
                 }
             } else {
-                if (mirOperand->type.isReturn) {
+                if (fromValueMirOperand->type.isReturn) {
                     //_last_ret must be x0
                     binaryOp2(INST_MOV,
                               greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
@@ -512,17 +512,18 @@ void generateCodes(MirCode *mirCode) {
                               X0,
                               false
                     );
-                } else if (mirOperand->type.isPointer) {
-                    loge(ARM64_TAG, "internal error: pointer type not supported");
+                } else if (fromValueMirOperand->type.isPointer) {
+                    const char *dataLabel = fromValueMirOperand->identity;
+                    binaryOpAdr(INST_ADR, commonRegisterBinary[distRegIndex], dataLabel);
                 } else {
-                    switch (mirOperand->type.primitiveType) {
+                    switch (fromValueMirOperand->type.primitiveType) {
                         case OPERAND_INT8:
                         case OPERAND_INT16:
                         case OPERAND_INT32: {
                             binaryOp2(INST_MOV,
                                       greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
                                       commonRegisterBinary[distRegIndex],
-                                      mirOperand->dataInt32,
+                                      fromValueMirOperand->dataInt32,
                                       true
                             );
 
@@ -536,7 +537,7 @@ void generateCodes(MirCode *mirCode) {
                             binaryOp2(INST_MOV,
                                       greaterRegisterWidth == ARM_BLOCK_64_ALIGN,
                                       commonRegisterBinary[distRegIndex],
-                                      mirOperand->dataFloat64,
+                                      fromValueMirOperand->dataFloat64,
                                       true
                             );
                             break;

@@ -26,7 +26,7 @@ struct InstBranchRelocateInfo {
 
 struct InstDataRelocateInfo {
     Arm64Inst inst;//adrp
-    BranchCondition branchCondition;
+    Operand dist;
     const char *label;
 };
 
@@ -43,6 +43,7 @@ struct InstList {
     InstRelocateType relocateType;
     union {
         InstBranchRelocateInfo branchRelocateInfo;
+        InstDataRelocateInfo dataRelocateInfo;
     };
 
     InstList *next;
@@ -75,6 +76,29 @@ void emitInst(Inst inst) {
     InstList *instList = (InstList *) pccMalloc(BIN_TAG, sizeof(InstList));
     instList->inst = inst;
     instList->needRelocation = false;
+    instList->next = nullptr;
+    instList->index = instCount++;
+    if (instListHead == nullptr) {
+        instListHead = instList;
+    } else {
+        InstList *p = instListHead;
+        while (p->next != nullptr) {
+            p = p->next;
+        }
+        p->next = instList;
+    }
+}
+
+void emitRelocateDataInst(Arm64Inst inst, Operand dist, const char *label) {
+    InstList *instList = (InstList *) pccMalloc(BIN_TAG, sizeof(InstList));
+    instList->inst = 0;
+
+    instList->needRelocation = true;
+    instList->relocateType = RELOCATE_DATA;
+    instList->dataRelocateInfo.inst = inst;
+    instList->dataRelocateInfo.dist = dist;
+    instList->dataRelocateInfo.label = label;
+
     instList->next = nullptr;
     instList->index = instCount++;
     if (instListHead == nullptr) {
@@ -122,7 +146,11 @@ int getLabelIndex(const char *label) {
     return -1;
 }
 
-Inst realBinaryOpBranch(Arm64Inst inst, BranchCondition branchCondition, int32_t offset);
+uint64_t getDataOffset(const char *label);
+
+Inst realBinaryOpBranch(Arm64Inst inst, BranchCondition branchCondition, uint64_t offset);
+
+Inst realBinaryOpAdr(Arm64Inst inst, Operand dist, uint64_t offset);
 
 static volatile bool relocated = false;
 
@@ -130,7 +158,7 @@ uint64_t getInstBufferSize() {
     return getCurrentInstCount() * sizeof(Inst);
 }
 
-void relocateBinary(uint64_t dataSectionOffset) {
+void relocateBinary(uint64_t dataTextVaddrOffset) {
     InstList *p = instListHead;
     while (p != nullptr) {
         if (p->needRelocation) {
@@ -139,17 +167,30 @@ void relocateBinary(uint64_t dataSectionOffset) {
                     int labelIndex = getLabelIndex(p->branchRelocateInfo.label);
                     if (labelIndex == -1) {
                         loge(BIN_TAG, "error: unknown label:%s", p->branchRelocateInfo.label);
+                        exit(-1);
                     }
+                    uint64_t textLabelOffset = (labelIndex - p->index) * 4;
                     p->inst = realBinaryOpBranch(
                             p->branchRelocateInfo.inst,
                             p->branchRelocateInfo.branchCondition,
-                            ((labelIndex - p->index) * 4)
+                            textLabelOffset
                     );
                     p->needRelocation = false;
                     break;
                 }
                 case RELOCATE_DATA: {
-
+                    uint64_t dataOffset = getDataOffset(p->dataRelocateInfo.label);
+                    if (dataOffset == INTMAX_MAX) {
+                        loge(BIN_TAG, "data not found when relocation");
+                        exit(-1);
+                    }
+                    uint64_t dataLabelOffset = (dataTextVaddrOffset + dataOffset) - (p->index * 4);
+                    p->inst = realBinaryOpAdr(
+                            p->dataRelocateInfo.inst,
+                            p->dataRelocateInfo.dist,
+                            dataLabelOffset
+                    );
+                    p->needRelocation = false;
                     break;
                 }
                 default: {
@@ -554,7 +595,7 @@ void binaryOp2(Arm64Inst inst, uint32_t is64Bit, Operand dist, Operand src, bool
     }
 }
 
-Inst realBinaryOpBranch(Arm64Inst inst, BranchCondition branchCondition, int32_t offset) {
+Inst realBinaryOpBranch(Arm64Inst inst, BranchCondition branchCondition, uint64_t offset) {
     Inst instruction = 0;
     switch (inst) {
         case INST_BC: {
@@ -648,6 +689,44 @@ void binaryOpBranch(Arm64Inst inst, BranchCondition branchCondition, const char 
     emitRelocateBranchInst(inst, branchCondition, label);
 }
 
+Inst realBinaryOpAdr(Arm64Inst inst, Operand dist, uint64_t offset) {
+    Inst instruction = 0;
+    switch (inst) {
+        case INST_ADR: {
+            uint64_t offsetLow = offset & 0x3;
+            uint64_t offsetHigh = offset >> 2;
+            instruction = 0x10000000;
+            instruction |= dist;
+            instruction |= offsetLow << 29;
+            instruction |= offsetHigh << 5;
+            break;
+        }
+        case INST_ADRP: {
+            loge(BIN_TAG, "realBinaryOpAdr not impl adrp");
+            exit(-1);
+            break;
+        }
+        default: {
+            loge(BIN_TAG, "realBinaryOpAdr unknown inst: %d", inst);
+            exit(-1);
+        }
+    }
+    return instruction;
+}
+
+void binaryOpAdr(Arm64Inst inst, Operand dist, const char *label) {
+    if (inst == INST_ADR) {
+        logd(BIN_TAG, "\tadr %s, %s", revertRegisterNames[dist], label);
+
+        emitRelocateDataInst(inst, dist, label);
+    } else if (inst == INST_ADRP) {
+        logd(BIN_TAG, "\tadrp %s, %s", revertRegisterNames[dist], label);
+    } else {
+        loge(BIN_TAG, "unknown address inst: %d", inst);
+        exit(-1);
+    }
+}
+
 void binaryOpRet(Arm64Inst inst) {
     if (inst != INST_RET) {
         loge(BIN_TAG, "unknown INST_RET inst:%d", inst);
@@ -694,9 +773,20 @@ struct DataList {
 DataList *dataListHead = nullptr;
 uint64_t dataOffset = 0;
 
+uint64_t getDataOffset(const char *label) {
+    DataList *p = dataListHead;
+    while (p != nullptr) {
+        if (strcmp(p->label, label) == 0) {
+            return p->offset;
+        }
+        p = p->next;
+    }
+    return INTMAX_MAX;
+}
+
 void binaryData(const char *label, void *buffer, const char *type, uint32_t size) {
     logd(BIN_TAG, "%s:", label);
-    logd(BIN_TAG, "\t#02X: %s[%d]", dataOffset, type, size);
+    logd(BIN_TAG, "\t#%02X: %s[%d]", dataOffset, type, size);
     DataList *dataList = (DataList *) pccMalloc(BIN_TAG, sizeof(DataList));
     dataList->next = nullptr;
     dataList->label = label;

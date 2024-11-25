@@ -35,6 +35,9 @@ enum Arm64Inst {
 
     INST_MOV,
 
+    INST_ADR,
+    INST_ADRP,
+
     INST_RET,
 
     INST_NOP,
@@ -73,7 +76,7 @@ uint64_t getInstBufferSize();
 
 void emitLabel(const char *label);
 
-void relocateBinary(uint64_t dataSectionOffset);
+void relocateBinary(uint64_t dataTextVaddrOffset);
 
 InstBuffer *getEmittedInstBuffer();
 
@@ -98,6 +101,11 @@ void binaryOp2(Arm64Inst inst, uint32_t is64Bit, Operand dist, Operand src, bool
 void binaryOpBranch(Arm64Inst inst, BranchCondition branchCondition, const char *label);
 
 /**
+ * inst_adr
+ */
+void binaryOpAdr(Arm64Inst inst, Operand dist, const char *label);
+
+/**
  * INST_RET
  */
 void binaryOpRet(Arm64Inst inst);
@@ -110,6 +118,7 @@ void binaryOpSvc(Arm64Inst inst, uint32_t sysCallImm);
  * data section
  */
 void binaryData(const char *label, void *buffer, const char *type, uint32_t size);
+
 DataBuffer *getEmittedDataBuffer();
 
 #endif //PCC_CC_BIN_ARM64_H

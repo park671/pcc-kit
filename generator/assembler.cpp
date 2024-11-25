@@ -38,8 +38,9 @@ void generateElfArm64(Mir *mir,
     programEntry = alignTo(programEntry, 4096);
     uint64_t textBufferSize = getInstBufferSize();
     uint64_t dataEntry = alignTo(programEntry + textBufferSize, 4096);//file & vaddr use same alignment
+    uint64_t dataTextVaddrOffset = dataEntry - programEntry;
     //relocate & get binary
-    relocateBinary(dataEntry);
+    relocateBinary(dataTextVaddrOffset);
     InstBuffer *instBuffer = getEmittedInstBuffer();
     DataBuffer *dataBuffer = getEmittedDataBuffer();
 
