@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 uint64_t alignTo(uint64_t value, uint64_t alignment);
+uint64_t alignDownTo(uint64_t value, uint64_t alignment);
 
 extern void openFile(const char *fileName);
 

@@ -107,6 +107,13 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
         }
         case NODE_METHOD_DEFINE: {
             AstMethodDefine *astMethodDefine = (AstMethodDefine *) currentNode;
+            if (token->tokenType == TOKEN_KEYWORD && strcmp(token->content, "extern") == 0) {
+                //consume extern
+                token = token->next;
+                astMethodDefine->defineType = METHOD_EXTERN;
+            } else {
+                astMethodDefine->defineType = METHOD_IMPL;
+            }
             //method type
             if (token->tokenType != TOKEN_TYPE && token->tokenType != TOKEN_POINTER_TYPE) {
                 loge(SYNTAX_TAG, "[-]error: method define need type: %s", token->content);
@@ -145,9 +152,19 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 return nullptr;
             }
             token = token->next;
-            //method code block
-            astMethodDefine->statementBlock = (AstStatementBlock *) pccMalloc(SYNTAX_TAG, sizeof(AstStatementBlock));
-            token = travelAst(token, astMethodDefine->statementBlock, NODE_STATEMENT_BLOCK);
+            if (astMethodDefine->defineType == METHOD_EXTERN) {
+                astMethodDefine->statementBlock = nullptr;
+                if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ";") != 0) {
+                    loge(SYNTAX_TAG, "[-]error: method define need \";\" at end: %s", token->content);
+                    return nullptr;
+                }
+                token = token->next;
+            } else {
+                //method code block
+                astMethodDefine->statementBlock = (AstStatementBlock *) pccMalloc(SYNTAX_TAG,
+                                                                                  sizeof(AstStatementBlock));
+                token = travelAst(token, astMethodDefine->statementBlock, NODE_STATEMENT_BLOCK);
+            }
             popMethod();
             break;
         }
@@ -620,7 +637,8 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 }
             } else if (token->tokenType == TOKEN_INTEGER || token->tokenType == TOKEN_FLOAT) {
                 astArithmeticFactor->factorType = ARITHMETIC_PRIMITIVE;
-                astArithmeticFactor->primitiveData = (AstPrimitiveData *) pccMalloc(SYNTAX_TAG, sizeof(AstPrimitiveData));
+                astArithmeticFactor->primitiveData = (AstPrimitiveData *) pccMalloc(SYNTAX_TAG,
+                                                                                    sizeof(AstPrimitiveData));
                 token = travelAst(token, astArithmeticFactor->primitiveData, NODE_PRIMITIVE_DATA);
             } else if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, "(") == 0) {
                 loge(SYNTAX_TAG, "[-]error: not impl yet: %s", token->content);
@@ -641,7 +659,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 astArithmeticFactor->array = (AstArrayData *) pccMalloc(SYNTAX_TAG, sizeof(AstArrayData));
                 const char *contentData = token->content;
                 int contentLength = strlen(contentData);
-                AstArrayData* array = astArithmeticFactor->array;
+                AstArrayData *array = astArithmeticFactor->array;
                 for (int i = 0; i < contentLength; i++) {
                     char dataChar = contentData[i];
                     array->data.type.isPointer = false;
@@ -650,7 +668,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                     if (i == contentLength - 1) {
                         array->next = nullptr;
                     } else {
-                        array->next = (AstArrayData*)pccMalloc(SYNTAX_TAG, sizeof(AstArrayData));
+                        array->next = (AstArrayData *) pccMalloc(SYNTAX_TAG, sizeof(AstArrayData));
                         array = array->next;
                     }
                 }
@@ -684,12 +702,12 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             break;
         }
         case NODE_ARRAY_DATA: {
-            AstArrayData* astArrayData = (AstArrayData*) currentNode;
+            AstArrayData *astArrayData = (AstArrayData *) currentNode;
             token = travelAst(token, &astArrayData->data, NODE_PRIMITIVE_DATA);
             if (strcmp(token->content, ",") == 0) {
                 //consume ,
                 token = token->next;
-                astArrayData->next = (AstArrayData*) pccMalloc(SYNTAX_TAG, sizeof(AstArrayData));
+                astArrayData->next = (AstArrayData *) pccMalloc(SYNTAX_TAG, sizeof(AstArrayData));
                 token = travelAst(token, astArrayData->next, NODE_ARRAY_DATA);
             } else {
                 astArrayData->next = nullptr;
@@ -697,7 +715,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             break;
         }
         case NODE_PRIMITIVE_DATA: {
-            AstPrimitiveData* astPrimitiveData = (AstPrimitiveData*) currentNode;
+            AstPrimitiveData *astPrimitiveData = (AstPrimitiveData *) currentNode;
 
             char *consumedCharsPtr;
             if (token->tokenType == TOKEN_INTEGER) {
@@ -782,6 +800,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ";") != 0) {
                 loge(SYNTAX_TAG, "[-]error: method call need ;: %s", token->content);
             }
+            //fixme: method call is not a statement, it is a expression
             //DO NOT consume ;
             break;
         }

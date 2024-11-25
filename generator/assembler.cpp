@@ -28,6 +28,7 @@ void generateElfArm64(Mir *mir,
     int programHeaderCount = 0;
     int sectionHeaderCount = 1;//shstrtab
     initLinuxArm64ProgramStart();
+    initLinuxArm64SyscallWrapper();
     int sectionCount = generateArm64Target(mir);
     programEntry += sizeof(Elf64_Ehdr);//elf header
     programHeaderCount += sectionCount;

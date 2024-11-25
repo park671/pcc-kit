@@ -228,7 +228,6 @@ int allocParamReg(int paramIndex) {
 }
 
 int currentStackTop = 0;
-int stackStep = 4;
 
 void allocStack(int stackSize) {
     currentStackTop = alignStackSize(stackSize);
@@ -240,8 +239,6 @@ void allocStack(int stackSize) {
     binaryOpStoreLoad(INST_STP, 1, X29, X30, SP, currentStackTop);
     //2 x 64bit = 16byte
     binaryOp3(INST_ADD, 1, X29, SP, currentStackTop, true);
-
-    currentStackTop -= stackStep;
 }
 
 int allocVarFromStack(const char *varName, int sizeInByte) {
@@ -249,27 +246,11 @@ int allocVarFromStack(const char *varName, int sizeInByte) {
     StackVar *stackVar = (StackVar *) malloc(sizeof(StackVar));
     stackVar->varName = varName;
     stackVar->varSize = size;
+    currentStackTop = alignDownTo(currentStackTop, ARM_BLOCK_64_ALIGN);
+    currentStackTop -= size;
     stackVar->stackOffset = currentStackTop;
     currentStackVarList.push_back(stackVar);
-    int offset = currentStackTop;
-    int alignMargin = 0;
-    if (size > ARM_BLOCK_32_ALIGN) {
-        //8byte align
-        while (offset % ARM_BLOCK_64_ALIGN != 0) {
-            //not align yet
-            alignMargin++;
-            offset--;
-        }
-    } else {
-        //4byte align
-        while (offset % ARM_BLOCK_32_ALIGN != 0) {
-            //not align yet
-            alignMargin++;
-            offset--;
-        }
-    }
-    currentStackTop -= size + alignMargin;
-    return offset;
+    return stackVar->stackOffset;
 }
 
 int getVarSizeFromStack(const char *varName) {
@@ -1045,6 +1026,7 @@ void generateText(MirMethod *mirMethod) {
     emitLabel(mirMethod->label);
     clearRegs();
     int methodStackSize = computeMethodStackSize(mirMethod);
+    methodStackSize++;
     allocStack(methodStackSize);
     storeParamsToStack(mirMethod->param);
     MirCode *code = mirMethod->code;

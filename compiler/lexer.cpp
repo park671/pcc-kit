@@ -10,14 +10,11 @@
 
 using namespace std;
 
-//16KB
-#define BUFFER_SIZE 16384
-
 static const char *LEXER_TAG = "lexer";
 static const char *VAR_TAG = "var";
 
-static const char *keywords[] = {"if", "else", "for", "while", "return"};
-static const size_t keywordSize = 5;
+static const char *keywords[] = {"if", "else", "for", "while", "return", "extern"};
+static const size_t keywordSize = 6;
 
 static const char *types[] = {"void", "char", "int", "short", "long", "float", "double"};
 static const size_t typeSize = 7;
@@ -60,26 +57,26 @@ const char *getTokenTypeName(TokenType tokenType) {
     return "unknown";
 }
 
-static void trimString(char *buffer) {
+static void trimString(ProcessedSource *source) {
     int startIndex = -1;
     int endIndex = -1;
-    for (int i = 0; i < BUFFER_SIZE; i++) {
+    for (int i = 0; i < source->length; i++) {
         if (startIndex == -1) {
-            if (buffer[i] == ' ') {
+            if (source->line[i] == ' ') {
                 continue;
             }
             startIndex = i;
         }
-        if (buffer[i] == '\n' || buffer[i] == '\0') {
+        if (source->line[i] == '\n' || source->line[i] == '\0') {
             endIndex = i;
             break;
         }
     }
     int size = endIndex - startIndex;
     for (int i = 0; i < size; i++) {
-        buffer[i] = buffer[i + startIndex];
+        source->line[i] = source->line[i + startIndex];
     }
-    buffer[size] = '\0';
+    source->line[size] = '\0';
 }
 
 inline static bool isBoolOperator(char a) {
@@ -186,9 +183,20 @@ static Token *lexer(Token *tail, const char *buffer) {
     bool nextCharEscape = false;
     bool inCharsSession = false;
     for (int i = 0; i < length; i++) {
-
         if (inCharsSession && isEscape(buffer[i])) {
             nextCharEscape = true;
+            continue;
+        } else if (nextCharEscape) {
+            if (buffer[i] == 'n') {
+                snprintf(tmp, 256, "%s\n", tmp);
+            } else if (buffer[i] == 'r') {
+                snprintf(tmp, 256, "%s\r", tmp);
+            } else if (buffer[i] == 't') {
+                snprintf(tmp, 256, "%s\t", tmp);
+            } else if (buffer[i] == 'b') {
+                snprintf(tmp, 256, "%s\b", tmp);
+            }
+            nextCharEscape = false;
             continue;
         } else if (isQuotation(buffer[i]) && !nextCharEscape) {
             if (!inCharsSession) {
@@ -293,18 +301,16 @@ static Token *lexer(Token *tail, const char *buffer) {
     return tail;
 }
 
-Token *buildTokens(const char *sourceFilePath) {
+Token *buildTokens(ProcessedSource *source) {
     logd(LEXER_TAG, "lexical analysis...");
-    FILE *inputFile = fopen(sourceFilePath, "r");
-    char buffer[BUFFER_SIZE];
     Token *tokenHead = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
     tokenHead->tokenType = TOKEN_HEAD;
     Token *tokenTail = tokenHead;
-    while (fgets(buffer, BUFFER_SIZE, inputFile) != nullptr) {
-        trimString(buffer);
-        tokenTail = lexer(tokenTail, buffer);
+    while (source != nullptr) {
+        trimString(source);
+        tokenTail = lexer(tokenTail, source->line);
+        source = source->next;
     }
-    fclose(inputFile);
     return tokenHead;
 }
 

@@ -307,13 +307,19 @@ struct AstStatementBlock {
     //}
 };
 
+enum MethodDefineType {
+    METHOD_IMPL,
+    METHOD_EXTERN,
+};
+
 struct AstMethodDefine {
+    MethodDefineType defineType;
     AstType *type;
     AstIdentity *identity;
     // (
     AstParamList *paramList;
     //)
-    AstStatementBlock *statementBlock;
+    AstStatementBlock *statementBlock;//nullable
 };
 
 struct AstMethodSeq {

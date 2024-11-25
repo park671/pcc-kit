@@ -36,6 +36,7 @@ enum MirType {
 struct MirCode;
 
 struct MirMethod {
+    bool isExtern = false;
     const char *label;//identity, in another word: method name.
     MirMethodParam *param;//nullable
     MirCode *code;
@@ -45,6 +46,7 @@ struct MirMethod {
 
 struct MirMethodParam {
     const char *paramName;
+    bool pointer;
     bool integer;//true-int, false-float
     bool sign;//true-signed, false-unsigned
     int byte;//1-int8, 2-int16, 4-int32, 8-int64

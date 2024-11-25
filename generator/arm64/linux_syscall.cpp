@@ -12,3 +12,15 @@ void initLinuxArm64ProgramStart() {
     binaryOp2(INST_MOV, 1, X8, SYS_EXIT, true);
     binaryOpSvc(INST_SVC, 0);
 }
+
+//write(int fd, void *buffer, int size);
+void initLinuxArm64SyscallWrapper() {
+    emitLabel("write");
+    binaryOp2(INST_MOV, 1, X8, SYS_WRITE, true);
+    binaryOpSvc(INST_SVC, 0);
+    binaryOpRet(INST_RET);
+    emitLabel("read");
+    binaryOp2(INST_MOV, 1, X8, SYS_READ, true);
+    binaryOpSvc(INST_SVC, 0);
+    binaryOpRet(INST_RET);
+}

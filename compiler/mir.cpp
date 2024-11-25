@@ -1301,6 +1301,9 @@ void generateParam(AstParamList *astParamList, MirMethod *mirMethod) {
         //real travel ast
         mirMethodParam->paramName = curAstParamList->paramDefine->identity->name;
         mirMethodParam->sign = true;
+        if (curAstParamList->paramDefine->type->isPointer) {
+            mirMethodParam->pointer = true;
+        }
         switch (curAstParamList->paramDefine->type->primitiveType) {
             case TYPE_CHAR: {
                 mirMethodParam->integer = true;
@@ -1368,6 +1371,13 @@ void generateMethod(AstMethodDefine *astMethodDefine, MirMethod *mirMethod) {
     addMethodInfo(
             astMethodDefine->identity->name,
             type);
+    if (astMethodDefine->defineType == METHOD_EXTERN) {
+        logd(MIR_TAG, "skip extern method mir generation: %s", astMethodDefine->identity->name);
+        mirMethod->isExtern = true;
+        resetTempValIndex();
+        return;
+    }
+    mirMethod->isExtern = false;
     AstStatementSeq *astStatementSeq = astMethodDefine->statementBlock->statementSeq;
     //start mir code session
     startMirCodeSession();
@@ -1396,17 +1406,21 @@ Mir *generateMir(AstProgram *program) {
     while (astMethodSeq != nullptr) {
         //maintain mir linked-list
         mirMethod = (MirMethod *) pccMalloc(MIR_TAG, sizeof(MirMethod));
-        mirMethod->next = nullptr;
-        if (firstMirMethod == nullptr) {
-            firstMirMethod = mirMethod;
-        }
-        if (lastMirMethod != nullptr) {
-            lastMirMethod->next = mirMethod;
-        }
-        lastMirMethod = mirMethod;
-        //real travel ast
-        methodSize++;
         generateMethod(astMethodSeq->methodDefine, mirMethod);
+        if (mirMethod->isExtern) {
+            pccFree(MIR_TAG, mirMethod);
+        } else {
+            mirMethod->next = nullptr;
+            if (firstMirMethod == nullptr) {
+                firstMirMethod = mirMethod;
+            }
+            if (lastMirMethod != nullptr) {
+                lastMirMethod->next = mirMethod;
+            }
+            lastMirMethod = mirMethod;
+            //real travel ast
+            methodSize++;
+        }
         astMethodSeq = astMethodSeq->nextAstMethodSeq;
     }
     mir->mirMethod = firstMirMethod;

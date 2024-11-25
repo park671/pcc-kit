@@ -21,7 +21,7 @@ enum SectionType {
 struct StackVar {
     const char *varName;
     int varSize;
-    int stackOffset;
+    uint64_t stackOffset;
 };
 
 /**

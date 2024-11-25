@@ -21,6 +21,12 @@ uint64_t alignTo(uint64_t value, uint64_t alignment) {
     return value + alignment - remainder; // 向上对齐
 }
 
+// 将 value 对齐到 alignment 的倍数
+uint64_t alignDownTo(uint64_t value, uint64_t alignment) {
+    int remainder = value % alignment;
+    return value - remainder; // 向下对齐
+}
+
 static FILE *targetFile = nullptr;
 static volatile uint32_t fileOffset = 0;
 

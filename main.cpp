@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 #include "logger/logger.h"
+#include "compiler/preprocessor.h"
 #include "compiler/lexer.h"
 #include "compiler/syntaxer.h"
 #include "compiler/mir.h"
@@ -140,7 +141,9 @@ void processParams(int argc, char **argv) {
 
 int main(int argc, char **argv) {
     processParams(argc, argv);
-    Token *tokens = buildTokens(sourceFileName);
+    ProcessedSource *source = preprocess(sourceFileName);
+    Token *tokens = buildTokens(source);
+    releasePreProcessorMemory();
     printTokenStack(tokens);
     AstProgram *program = buildAst(tokens);
     releaseLexerMemory();

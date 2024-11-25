@@ -41,5 +41,6 @@ enum LinuxArm64SysCallNumber{
 };
 
 void initLinuxArm64ProgramStart();
+void initLinuxArm64SyscallWrapper();
 
 #endif //PCC_LINUX_SYSCALL_H

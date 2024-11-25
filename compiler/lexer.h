@@ -6,9 +6,12 @@
 #define PCC_CC_LEXER_H
 
 #include "token.h"
+#include "preprocessor.h"
 
-extern Token *buildTokens(const char *sourceFilePath);
+extern Token *buildTokens(ProcessedSource *source);
+
 extern void printTokenStack(Token *tokens);
+
 extern void releaseLexerMemory();
 
 #endif //PCC_CC_LEXER_H

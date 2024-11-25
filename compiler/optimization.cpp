@@ -58,7 +58,8 @@ bool replaceFutureUsedMir2(MirCode *currentMirCode, const char *identity, MirOpe
 
         if (mirCode->mirType == MIR_2) {
             Mir2 *mir2 = mirCode->mir2;
-            if (mir2->fromValue.type.primitiveType == OPERAND_IDENTITY && strcmp(mir2->fromValue.identity, identity) == 0) {
+            if (mir2->fromValue.type.primitiveType == OPERAND_IDENTITY &&
+                strcmp(mir2->fromValue.identity, identity) == 0) {
                 mir2->fromValue = *replaceWith;
                 result = true;
             }
@@ -81,18 +82,21 @@ bool replaceFutureUsedMir2(MirCode *currentMirCode, const char *identity, MirOpe
         } else if (mirCode->mirType == MIR_RET) {
             MirRet *mirRet = mirCode->mirRet;
             if (mirRet->value != nullptr) {
-                if (mirRet->value->type.primitiveType == OPERAND_IDENTITY && strcmp(mirRet->value->identity, identity) == 0) {
+                if (mirRet->value->type.primitiveType == OPERAND_IDENTITY &&
+                    strcmp(mirRet->value->identity, identity) == 0) {
                     mirRet->value = replaceWith;
                     result = true;
                 }
             }
         } else if (mirCode->mirType == MIR_CMP) {
             MirCmp *mirCmp = mirCode->mirCmp;
-            if (mirCmp->value1.type.primitiveType == OPERAND_IDENTITY && strcmp(mirCmp->value1.identity, identity) == 0) {
+            if (mirCmp->value1.type.primitiveType == OPERAND_IDENTITY &&
+                strcmp(mirCmp->value1.identity, identity) == 0) {
                 mirCmp->value1 = *replaceWith;
                 result = true;
             }
-            if (mirCmp->value2.type.primitiveType == OPERAND_IDENTITY && strcmp(mirCmp->value2.identity, identity) == 0) {
+            if (mirCmp->value2.type.primitiveType == OPERAND_IDENTITY &&
+                strcmp(mirCmp->value2.identity, identity) == 0) {
                 mirCmp->value2 = *replaceWith;
                 result = true;
             }
@@ -144,7 +148,10 @@ void printMirCode(MirMethod *mirMethod);
 void foldMir2(MirMethod *mirMethod) {
     MirCode *mirCode = mirMethod->code;
     while (mirCode != nullptr) {
-        if (mirCode->mirType == MIR_2) {
+        if (mirCode->mirType == MIR_2
+            && mirCode->mir2->op == OP_ASSIGNMENT
+            && !mirCode->mir2->fromValue.type.isPointer) {
+            //todo this is a BIG shit, will fix in future
             Mir2 *mir2 = mirCode->mir2;
             if (replaceFutureUsedMir2(mirCode, mir2->distIdentity, &mir2->fromValue)) {
                 mirMethod->code = removeMirCode(mirMethod, mirCode);
