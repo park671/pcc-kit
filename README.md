@@ -16,7 +16,7 @@ In terms of code structure, the compiler is divided into frontend and backend. T
 ```
 almost all, this project do not use any os platform or cpu feature.
 ```
-### supported target list（目标平台）:
+### supported target（目标平台）:
 ```
 windows 11 arm64
 ubuntu 22 (linux 6.9) arm64
@@ -100,7 +100,7 @@ macOS arm64 (not work due to code signature)
 here are some test code:
 
 ```
-int INST_ADD(int abc,     int cd33) {
+int add(int abc,     int cd33) {
     int c = abc + cd33;
     return c;
 }
@@ -109,7 +109,7 @@ int main() {
     int index = 0;
     int test = 0;
     for(index = 0; index<10;index=index+1) {
-        test = INST_ADD(test, 1);
+        test = add(test, 1);
     }
     return test;
 }
@@ -117,7 +117,7 @@ int main() {
 
 here are compiler's MIR result:
 ```angular2html
-2024-10-09 21:02:29.199 - optimization:		---method:INST_ADD---
+2024-10-09 21:02:29.199 - optimization:		---method:add---
 2024-10-09 21:02:29.199 - mir:		type 6: _tv_0 = abc + cd33
 2024-10-09 21:02:29.199 - mir:		INST_RET: _tv_0
 2024-10-09 21:02:29.199 - optimization:		---method:main---
@@ -128,7 +128,7 @@ here are compiler's MIR result:
 2024-10-09 21:02:29.199 - mir:		label:_lb_2
 2024-10-09 21:02:29.199 - mir:		INST_CMP: index < 10 ? _lb_0 : _lb_1
 2024-10-09 21:02:29.199 - mir:		label:_lb_0
-2024-10-09 21:02:29.199 - mir:		call: INST_ADD(
+2024-10-09 21:02:29.199 - mir:		call: add(
 2024-10-09 21:02:29.199 - mir:			test
 2024-10-09 21:02:29.199 - mir:			1
 2024-10-09 21:02:29.199 - mir:		)
