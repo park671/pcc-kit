@@ -24,8 +24,15 @@ struct InstBranchRelocateInfo {
     const char *label;
 };
 
+struct InstDataRelocateInfo {
+    Arm64Inst inst;//adrp
+    BranchCondition branchCondition;
+    const char *label;
+};
+
 enum InstRelocateType {
     RELOCATE_BRANCH,
+    RELOCATE_DATA
 };
 
 struct InstList {
@@ -117,7 +124,13 @@ int getLabelIndex(const char *label) {
 
 Inst realBinaryOpBranch(Arm64Inst inst, BranchCondition branchCondition, int32_t offset);
 
-void relocateBinary(int32_t baseAddr) {
+static volatile bool relocated = false;
+
+uint64_t getInstBufferSize() {
+    return getCurrentInstCount() * sizeof(Inst);
+}
+
+void relocateBinary(uint64_t dataSectionOffset) {
     InstList *p = instListHead;
     while (p != nullptr) {
         if (p->needRelocation) {
@@ -130,9 +143,13 @@ void relocateBinary(int32_t baseAddr) {
                     p->inst = realBinaryOpBranch(
                             p->branchRelocateInfo.inst,
                             p->branchRelocateInfo.branchCondition,
-                            baseAddr + ((labelIndex - p->index) * 4)
+                            ((labelIndex - p->index) * 4)
                     );
                     p->needRelocation = false;
+                    break;
+                }
+                case RELOCATE_DATA: {
+
                     break;
                 }
                 default: {
@@ -142,9 +159,14 @@ void relocateBinary(int32_t baseAddr) {
         }
         p = p->next;
     }
+    relocated = true;
 }
 
 InstBuffer *getEmittedInstBuffer() {
+    if (!relocated) {
+        loge(BIN_TAG, "not relocated yet!");
+        exit(-1);
+    }
     if (instListHead == nullptr) {
         return nullptr;
     }
@@ -659,4 +681,61 @@ void binaryOpSvc(Arm64Inst inst, uint32_t sysCallImm) {
     logd(BIN_TAG, "\tsvc #%d", sysCallImm);
     Inst opCode = 0xD4000001;
     emitInst(opCode | sysCallImm << 5);
+}
+
+struct DataList {
+    const char *label;
+    void *buffer;
+    uint64_t offset;//offset to .data start(vaddr), no alignment
+    uint32_t size;
+    DataList *next;
+};
+
+DataList *dataListHead = nullptr;
+uint64_t dataOffset = 0;
+
+void binaryData(const char *label, void *buffer, const char *type, uint32_t size) {
+    logd(BIN_TAG, "%s:", label);
+    logd(BIN_TAG, "\t#02X: %s[%d]", dataOffset, type, size);
+    DataList *dataList = (DataList *) pccMalloc(BIN_TAG, sizeof(DataList));
+    dataList->next = nullptr;
+    dataList->label = label;
+    dataList->buffer = buffer;
+    dataList->size = size;
+    dataList->offset = dataOffset;
+    dataOffset += size;
+
+    if (dataListHead == nullptr) {
+        dataListHead = dataList;
+    } else {
+        DataList *p = dataListHead;
+        while (p->next != nullptr) {
+            p = p->next;
+        }
+        p->next = dataList;
+    }
+}
+
+DataBuffer *getEmittedDataBuffer() {
+    if (!relocated) {
+        loge(BIN_TAG, "not relocated yet!");
+        exit(-1);
+    }
+    DataBuffer *dataBuffer = (DataBuffer *) pccMalloc(BIN_TAG, sizeof(DataBuffer));
+    dataBuffer->result = pccMalloc(BIN_TAG, dataOffset);
+    dataBuffer->size = 0;
+
+    DataList *p = dataListHead;
+    uint64_t currentOffset = 0;
+    while (p != nullptr) {
+        memcpy(((uint8_t *) dataBuffer->result) + currentOffset, p->buffer, p->size);
+        currentOffset += p->size;
+        dataBuffer->size += p->size;
+        p = p->next;
+    }
+    if (dataBuffer->size != dataOffset) {
+        loge(BIN_TAG, "emitted data size error:%d, %d", dataOffset, dataBuffer->size);
+        exit(-1);
+    }
+    return dataBuffer;
 }

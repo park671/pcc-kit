@@ -227,10 +227,6 @@ int allocParamReg(int paramIndex) {
     return paramIndex;//start from x0
 }
 
-void generateSection(SectionType sectionType) {
-
-}
-
 int currentStackTop = 0;
 int stackStep = 4;
 
@@ -516,7 +512,7 @@ void generateCodes(MirCode *mirCode) {
                               X0,
                               false
                     );
-                } else if(mirOperand->type.isPointer) {
+                } else if (mirOperand->type.isPointer) {
                     loge(ARM64_TAG, "internal error: pointer type not supported");
                 } else {
                     switch (mirOperand->type.primitiveType) {
@@ -1060,11 +1056,39 @@ void generateText(MirMethod *mirMethod) {
 }
 
 void generateData(MirData *mirData) {
-    //todo
+    switch (mirData->type.primitiveType) {
+        case OPERAND_INT8:
+            binaryData(mirData->label, mirData->data, "char", mirData->dataSize);
+            break;
+        case OPERAND_INT16:
+            binaryData(mirData->label, mirData->data, "short", mirData->dataSize);
+            break;
+        case OPERAND_INT32:
+            binaryData(mirData->label, mirData->data, "int", mirData->dataSize);
+            break;
+        case OPERAND_INT64:
+            binaryData(mirData->label, mirData->data, "long", mirData->dataSize);
+            break;
+        case OPERAND_FLOAT32:
+            binaryData(mirData->label, mirData->data, "float", mirData->dataSize);
+            break;
+        case OPERAND_FLOAT64:
+            binaryData(mirData->label, mirData->data, "long", mirData->dataSize);
+            break;
+        case OPERAND_UNKNOWN:
+        case OPERAND_IDENTITY:
+        case OPERAND_VOID:
+        case OPERAND_P:
+        default: {
+            loge(ARM64_TAG, "unsupported data type:%d", mirData->type.primitiveType);
+            exit(-1);
+        }
+    }
 }
 
 int generateArm64Target(Mir *mir) {
     logd(ARM64_TAG, "arm64 target generation...");
+    int sectionCount = 1;
     //.text
     MirMethod *mirMethod = mir->mirMethod;
     while (mirMethod != nullptr) {
@@ -1073,13 +1097,12 @@ int generateArm64Target(Mir *mir) {
     }
     //.data
     if (mir->mirData != nullptr) {
-        generateSection(SECTION_DATA);
         MirData *mirData = mir->mirData;
         while (mirData != nullptr) {
             generateData(mirData);
             mirData = mirData->next;
         }
+        sectionCount++;
     }
-    //todo real impl section count
-    return 1;
+    return sectionCount;
 }

@@ -161,10 +161,10 @@ static int mirDataLine = 0;
 static void emitMirData(MirData *mirData) {
     mirData->next = nullptr;
     mirData->line = mirDataLine++;
-    if(firstMirData == nullptr) {
+    if (firstMirData == nullptr) {
         firstMirData = mirData;
     }
-    if(lastMirData != nullptr) {
+    if (lastMirData != nullptr) {
         lastMirData->next = mirData;
     }
     lastMirData = mirData;
@@ -284,8 +284,10 @@ static const char *convertOperand(MirOperand *mirOperand) {
             result = (char *) pccMalloc(MIR_TAG, sizeof(char) * 21);
             snprintf(result, 21, "%f", mirOperand->dataFloat64);
             return result;
-        case OPERAND_UNKNOWN: break;
-        case OPERAND_VOID: break;
+        case OPERAND_UNKNOWN:
+            break;
+        case OPERAND_VOID:
+            break;
     }
 }
 
@@ -381,44 +383,44 @@ void printMir(Mir *mir) {
         logd(MIR_TAG, "---#%d:%s[%d]---", mirData->line, mirData->label, mirData->dataSize);
         switch (mirData->type.primitiveType) {
             case OPERAND_INT8: {
-                const char *data = (const char *)mirData->data;
+                const char *data = (const char *) mirData->data;
                 for (int i = 0; i < mirData->dataSize; i++) {
-                    logd(MIR_TAG, "[%d]=%d(%c)", i, data[i], data[i]);
+                    logd(MIR_TAG, "char [%d]=%d(%c)", i, data[i], data[i]);
                 }
                 break;
             }
             case OPERAND_INT16: {
-                const short *data = (const short *)mirData->data;
+                const short *data = (const short *) mirData->data;
                 for (int i = 0; i < mirData->dataSize; i++) {
-                    logd(MIR_TAG, "[%d]=%d", i, data[i]);
+                    logd(MIR_TAG, "short [%d]=%d", i, data[i]);
                 }
                 break;
             }
             case OPERAND_INT32: {
-                const int *data = (const int *)mirData->data;
+                const int *data = (const int *) mirData->data;
                 for (int i = 0; i < mirData->dataSize; i++) {
-                    logd(MIR_TAG, "[%d]=%d", i, data[i]);
+                    logd(MIR_TAG, "int [%d]=%d", i, data[i]);
                 }
                 break;
             }
             case OPERAND_INT64: {
-                const long *data = (const long *)mirData->data;
+                const long *data = (const long *) mirData->data;
                 for (int i = 0; i < mirData->dataSize; i++) {
-                    logd(MIR_TAG, "[%d]=%d", i, data[i]);
+                    logd(MIR_TAG, "long [%d]=%d", i, data[i]);
                 }
                 break;
             }
             case OPERAND_FLOAT32: {
-                const char *data = (const char *)mirData->data;
+                const char *data = (const char *) mirData->data;
                 for (int i = 0; i < mirData->dataSize; i++) {
-                    logd(MIR_TAG, "[%d]=%d", i, data[i]);
+                    logd(MIR_TAG, "float [%d]=%d", i, data[i]);
                 }
                 break;
             }
             case OPERAND_FLOAT64: {
-                const char *data = (const char *)mirData->data;
+                const char *data = (const char *) mirData->data;
                 for (int i = 0; i < mirData->dataSize; i++) {
-                    logd(MIR_TAG, "[%d]=%d", i, data[i]);
+                    logd(MIR_TAG, "double [%d]=%d", i, data[i]);
                 }
                 break;
             }
@@ -428,8 +430,6 @@ void printMir(Mir *mir) {
                 break;
             }
         }
-
-        logd(MIR_TAG, "line:%d", mirData->data);
         mirData = mirData->next;
     }
 }
@@ -689,15 +689,22 @@ void generateArithmeticFactor(AstArithmeticFactor *arithmeticFactor, MirOperand 
                 arrayData = arrayData->next;
             }
             arrayData = arithmeticFactor->array;
-            int dataSize = getPrimitiveTypeSize(&arrayData->data.type) * mirData->dataSize;
-            mirData->data = pccMalloc(MIR_TAG, dataSize);
+            bool arrayIsString = false;
+            if (!arrayData->data.type.isPointer && arrayData->data.type.primitiveType == TYPE_CHAR) {
+                //auto '\0' on string end.
+                arrayIsString = true;
+                mirData->dataSize++;
+            }
+            int dataSizeByte = getPrimitiveTypeSize(&arrayData->data.type) * mirData->dataSize;
+            mirData->data = pccMalloc(MIR_TAG, dataSizeByte);
             mirData->type.isReturn = false;
             mirData->type.isPointer = arrayData->data.type.isPointer;
             mirData->type.primitiveType = convertAstType2MirType(&arrayData->data.type);
             int index = 0;
             while (arrayData != nullptr) {
-                if(arrayData->data.type.isPointer) {
-                    ((uint64_t *)mirData->data)[index ++] = arrayData->data.dataLong;
+                if (arrayData->data.type.isPointer) {
+                    //fixme this is wrong
+                    ((uint64_t *) mirData->data)[index++] = arrayData->data.dataLong;
                     continue;
                 }
 
@@ -705,27 +712,27 @@ void generateArithmeticFactor(AstArithmeticFactor *arithmeticFactor, MirOperand 
                     case TYPE_VOID:
                         logd(MIR_TAG, "void array solve as byte.");
                     case TYPE_CHAR: {
-                        ((char *)mirData->data)[index ++] = arrayData->data.dataChar;
+                        ((char *) mirData->data)[index++] = arrayData->data.dataChar;
                         break;
                     }
                     case TYPE_SHORT: {
-                        ((short *)mirData->data)[index ++] = arrayData->data.dataShort;
+                        ((short *) mirData->data)[index++] = arrayData->data.dataShort;
                         break;
                     }
                     case TYPE_INT: {
-                        ((int *)mirData->data)[index ++] = arrayData->data.dataInt;
+                        ((int *) mirData->data)[index++] = arrayData->data.dataInt;
                         break;
                     }
                     case TYPE_LONG: {
-                        ((long *)mirData->data)[index ++] = arrayData->data.dataLong;
+                        ((long *) mirData->data)[index++] = arrayData->data.dataLong;
                         break;
                     }
                     case TYPE_FLOAT: {
-                        ((float *)mirData->data)[index ++] = arrayData->data.dataFloat;
+                        ((float *) mirData->data)[index++] = arrayData->data.dataFloat;
                         break;
                     }
                     case TYPE_DOUBLE: {
-                        ((double *)mirData->data)[index ++] = arrayData->data.dataDouble;
+                        ((double *) mirData->data)[index++] = arrayData->data.dataDouble;
                         break;
                     }
                     case TYPE_UNKNOWN:
@@ -735,6 +742,9 @@ void generateArithmeticFactor(AstArithmeticFactor *arithmeticFactor, MirOperand 
                     }
                 }
                 arrayData = arrayData->next;
+            }
+            if (arrayIsString) {
+                ((char *) mirData->data)[index++] = '\0';
             }
             if (index != mirData->dataSize) {
                 loge(MIR_TAG, "[-] internal error: array size error:%d, %d", index, mirData->dataSize);
@@ -1356,8 +1366,8 @@ void generateMethod(AstMethodDefine *astMethodDefine, MirMethod *mirMethod) {
         mirMethod->param = nullptr;
     }
     addMethodInfo(
-        astMethodDefine->identity->name,
-        type);
+            astMethodDefine->identity->name,
+            type);
     AstStatementSeq *astStatementSeq = astMethodDefine->statementBlock->statementSeq;
     //start mir code session
     startMirCodeSession();

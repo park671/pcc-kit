@@ -24,54 +24,79 @@ void generateElfArm64(Mir *mir,
     }
     openFile(outputFileName);
 
-    int currentOffset = 0;
+    uint64_t programEntry = 0;
     int programHeaderCount = 0;
     int sectionHeaderCount = 1;//shstrtab
     initLinuxArm64ProgramStart();
     int sectionCount = generateArm64Target(mir);
-    currentOffset += sizeof(Elf64_Ehdr);
+    programEntry += sizeof(Elf64_Ehdr);//elf header
     programHeaderCount += sectionCount;
     sectionHeaderCount += sectionCount;
-    currentOffset += programHeaderCount * sizeof(Elf64_Phdr);
-    currentOffset += sectionHeaderCount * sizeof(Elf64_Shdr);
+    programEntry += programHeaderCount * sizeof(Elf64_Phdr);//program header
+    programEntry += sectionHeaderCount * sizeof(Elf64_Shdr);//section header
 
-    int programEntry = currentOffset;
-
-    relocateBinary(0);
+    programEntry = alignTo(programEntry, 4096);
+    uint64_t textBufferSize = getInstBufferSize();
+    uint64_t dataEntry = alignTo(programEntry + textBufferSize, 4096);//file & vaddr use same alignment
+    //relocate & get binary
+    relocateBinary(dataEntry);
     InstBuffer *instBuffer = getEmittedInstBuffer();
-    Elf64_Phdr *programHeader = createProgramHeader(PT_LOAD,
-                                                    PF_R | PF_X,
-                                                    0,
-                                                    0,
-                                                    0,
-                                                    currentOffset + instBuffer->size,
-                                                    currentOffset + instBuffer->size,
-                                                    4096);
-    Elf64_Shdr *sectionHeader = createSectionHeader(TEXT_SECTION_IDX,
-                                                    SHT_PROGBITS,
-                                                    SHF_ALLOC | SHF_EXECINSTR,
-                                                    currentOffset,
-                                                    currentOffset,
-                                                    instBuffer->size,
-                                                    0,
-                                                    0,
-                                                    4,
-                                                    0);
-    currentOffset += instBuffer->size;
+    DataBuffer *dataBuffer = getEmittedDataBuffer();
+
+    Elf64_Phdr *textProgramHeader = createProgramHeader(PT_LOAD,
+                                                        PF_R | PF_X,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        programEntry + instBuffer->size,
+                                                        programEntry + instBuffer->size,
+                                                        4096);
+
+    Elf64_Phdr *dataProgramHeader = createProgramHeader(PT_LOAD,
+                                                        PF_R | PF_W,
+                                                        dataEntry,
+                                                        dataEntry,
+                                                        dataEntry,
+                                                        dataBuffer->size,
+                                                        dataBuffer->size,
+                                                        4096);
+    Elf64_Shdr *textSectionHeader = createSectionHeader(TEXT_SECTION_IDX,
+                                                        SHT_PROGBITS,
+                                                        SHF_ALLOC | SHF_EXECINSTR,
+                                                        programEntry,
+                                                        programEntry,
+                                                        instBuffer->size,
+                                                        0,
+                                                        0,
+                                                        4,
+                                                        0);
+
+    Elf64_Shdr *dataSectionHeader = createSectionHeader(DATA_SECTION_IDX,
+                                                        SHT_PROGBITS,
+                                                        SHF_WRITE | SHF_ALLOC,
+                                                        dataEntry,
+                                                        dataEntry,
+                                                        dataBuffer->size,
+                                                        0,
+                                                        0,
+                                                        4,
+                                                        0);
+
+    uint64_t strTabEntry = alignTo(dataEntry + dataBuffer->size, 4096);
 
     Elf64_Shdr *shstrtabSectionHeader = createSectionHeader(SHSTRTAB_SECTION_IDX,
                                                             SHT_STRTAB,
                                                             SHF_STRINGS | SHF_ALLOC,
-                                                            currentOffset,
-                                                            currentOffset,
+                                                            strTabEntry,
+                                                            strTabEntry,
                                                             52,
                                                             0,
                                                             0,
                                                             4,
                                                             0);
 
-    int programHeaderOffset = sizeof(Elf64_Ehdr);
-    int sectionHeaderOffset = programHeaderOffset + (sizeof(Elf64_Phdr) * programHeaderCount);
+    uint64_t programHeaderOffset = sizeof(Elf64_Ehdr);
+    uint64_t sectionHeaderOffset = programHeaderOffset + (sizeof(Elf64_Phdr) * programHeaderCount);
 
 
     Elf64_Ehdr *elfHeader = createElfHeader(ET_DYN,
@@ -85,16 +110,19 @@ void generateElfArm64(Mir *mir,
                                             sectionHeaderCount,
                                             sectionHeaderCount - 1);
     writeFileB(elfHeader, sizeof(Elf64_Ehdr));
-    for (int i = 0; i < sectionCount; i++) {
-        //todo real impl
-        writeFileB(programHeader, sizeof(Elf64_Phdr));
-    }
-    for (int i = 0; i < sectionCount; i++) {
-        //todo real impl
-        writeFileB(sectionHeader, sizeof(Elf64_Shdr));
-    }
+    //program header
+    writeFileB(textProgramHeader, sizeof(Elf64_Phdr));
+    writeFileB(dataProgramHeader, sizeof(Elf64_Phdr));
+    //section header
+    writeFileB(textSectionHeader, sizeof(Elf64_Shdr));
+    writeFileB(dataSectionHeader, sizeof(Elf64_Shdr));
     writeFileB(shstrtabSectionHeader, sizeof(Elf64_Shdr));
+    //binary buffer
+    writeEmptyAlignment(4096);
     writeFileB(instBuffer->result, instBuffer->size);
+    writeEmptyAlignment(4096);
+    writeFileB(dataBuffer->result, dataBuffer->size);
+    writeEmptyAlignment(4096);
     writeFileB(shstrtabString, shstrtabSize);
     logd(ASSEMBLER_TAG, "elf arm64 generation finish.");
 }
