@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(pcc VERSION 0.2.001)
+project(pcc VERSION 0.3.001)
 
 configure_file(
         "${CMAKE_SOURCE_DIR}/config.h.in"
