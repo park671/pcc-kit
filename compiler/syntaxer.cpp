@@ -1,65 +1,145 @@
 //
 // Created by Park Yu on 2024/9/11.
 //
-
-#include <stack>
-#include <vector>
+#include <limits.h>
 #include "syntaxer.h"
 #include "logger.h"
 #include "string.h"
 #include "mspace.h"
 
-using namespace std;
-
 //16KB
 #define BUFFER_SIZE 16384
 #define SYNTAX_TAG "syntaxer"
 
-static stack<vector<AstIdentity *> *> varList;
-static vector<AstMethodDefine *> methodList;
+struct VarListNode {
+    AstIdentity *identity;
+    VarListNode *next;
+};
+
+struct VarStackNode {
+    VarListNode *varListHead;
+    VarStackNode *next;
+};
+
+struct MethodListNode {
+    AstMethodDefine *methodDefine;
+    MethodListNode *next;
+};
+
+static VarStackNode *varStackHead;
+static MethodListNode *methodListHead;
 
 inline static bool hasVarDefine(const char *name) {
-    vector<AstIdentity *> *currentMethodStack = varList.top();
-    for (int i = 0; i < currentMethodStack->size(); i++) {
-        if (strcmp((*currentMethodStack)[i]->name, name) == 0) {
-            return true;
+    VarStackNode *stackNode = varStackHead;
+    while (stackNode != nullptr) {
+        VarListNode *p = stackNode->varListHead;
+        while (p != nullptr) {
+            if (strcmp(p->identity->name, name) == 0) {
+                return true;
+            }
+            p = p->next;
         }
+        stackNode = stackNode->next;
     }
     return false;
 }
 
 inline static bool hasMethodDefine(const char *name) {
-    for (int i = 0; i < methodList.size(); i++) {
-        if (strcmp(methodList[i]->identity->name, name) == 0) {
+    MethodListNode *p = methodListHead;
+    while (p != nullptr) {
+        if (strcmp(p->methodDefine->identity->name, name) == 0) {
             return true;
         }
+        p = p->next;
     }
     return false;
 }
 
 inline static AstMethodDefine *getMethodDefine(const char *name) {
-    for (int i = 0; i < methodList.size(); i++) {
-        if (strcmp(methodList[i]->identity->name, name) == 0) {
-            return methodList[i];
+    MethodListNode *p = methodListHead;
+    while (p != nullptr) {
+        if (strcmp(p->methodDefine->identity->name, name) == 0) {
+            return p->methodDefine;
         }
+        p = p->next;
     }
     return nullptr;
 }
 
 inline static void pushMethod(AstMethodDefine *astMethodDefine) {
-    methodList.push_back(astMethodDefine);
-    vector<AstIdentity *> *methodStack = new vector<AstIdentity *>();
-    varList.push(methodStack);
+    MethodListNode *methodListNode = (MethodListNode *) pccMalloc(SYNTAX_TAG, sizeof(MethodListNode));
+    methodListNode->next = nullptr;
+    methodListNode->methodDefine = astMethodDefine;
+
+    if (methodListHead == nullptr) {
+        methodListHead = methodListNode;
+    } else {
+        MethodListNode *p = methodListHead;
+        while (p->next != nullptr) {
+            p = p->next;
+        }
+        p->next = methodListNode;
+    }
+
+    VarStackNode *stackNode = (VarStackNode *) pccMalloc(SYNTAX_TAG, sizeof(VarStackNode));
+    stackNode->varListHead = nullptr;
+    stackNode->next = nullptr;
+    if (varStackHead == nullptr) {
+        varStackHead = stackNode;
+    } else {
+        VarStackNode *stackTop = varStackHead;
+        while (stackTop->next != nullptr) {
+            stackTop = stackTop->next;
+        }
+        stackTop->next = stackNode;
+    }
+}
+
+inline static void freeVarStack(VarStackNode *varStackNode) {
+    if (varStackNode->next != nullptr) {
+        loge(SYNTAX_TAG, "free non top node!");
+        exit(-1);
+    }
+    VarListNode *varListNode = varStackNode->varListHead;
+    while (varListNode != nullptr) {
+        VarListNode *next = varListNode->next;
+        pccFree(SYNTAX_TAG, varListNode);
+        varListNode = next;
+    }
+    pccFree(SYNTAX_TAG, varStackNode);
 }
 
 inline static void popMethod() {
-    vector<AstIdentity *> *methodStack = varList.top();
-    delete methodStack;
-    varList.pop();
+    VarStackNode *stackTop = varStackHead;
+    if (stackTop->next == nullptr) {
+        freeVarStack(varStackHead);
+        varStackHead = nullptr;
+    } else {
+        while (stackTop->next->next != nullptr) {
+            stackTop = stackTop->next;
+        }
+        freeVarStack(stackTop->next);
+        stackTop->next = nullptr;
+    }
 }
 
 inline static void addVar(AstIdentity *astIdentity) {
-    varList.top()->push_back(astIdentity);
+    VarStackNode *stackTop = varStackHead;
+    while (stackTop->next != nullptr) {
+        stackTop = stackTop->next;
+    }
+    VarListNode *varListNode = (VarListNode *) pccMalloc(SYNTAX_TAG, sizeof(VarListNode));
+    varListNode->next = nullptr;
+    varListNode->identity = astIdentity;
+    if (stackTop->varListHead == nullptr) {
+        stackTop->varListHead = varListNode;
+    } else {
+        VarListNode *varListTail = stackTop->varListHead;
+        while (varListTail->next != nullptr) {
+            varListTail = varListTail->next;
+        }
+        varListTail->next = varListNode;
+    }
 }
 
 inline static PrimitiveType convertTokenType2PrimitiveType(const char *type) {
@@ -117,7 +197,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             //method type
             if (token->tokenType != TOKEN_TYPE && token->tokenType != TOKEN_POINTER_TYPE) {
                 loge(SYNTAX_TAG, "[-]error: method define need type: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             astMethodDefine->type = (AstType *) pccMalloc(SYNTAX_TAG, sizeof(AstType));
             astMethodDefine->type->isPointer = (token->tokenType == TOKEN_POINTER_TYPE);
@@ -126,7 +206,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             //method name
             if (token->tokenType != TOKEN_IDENTIFIER) {
                 loge(SYNTAX_TAG, "[-]error: method define need identifier: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             astMethodDefine->identity = (AstIdentity *) pccMalloc(SYNTAX_TAG, sizeof(AstIdentity));
             astMethodDefine->identity->name = token->content;
@@ -135,7 +215,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             //method (
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, "(") != 0) {
                 loge(SYNTAX_TAG, "[-]error: method define need (: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             token = token->next;
             pushMethod(astMethodDefine);
@@ -149,21 +229,25 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             //method )
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ")") != 0) {
                 loge(SYNTAX_TAG, "[-]error: method define need ): %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             token = token->next;
-            if (astMethodDefine->defineType == METHOD_EXTERN) {
+            // method code block "{}"
+            if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, ";") == 0) {
+                //extern a method without "extern" keyword
+                astMethodDefine->defineType = METHOD_EXTERN;
                 astMethodDefine->statementBlock = nullptr;
-                if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ";") != 0) {
-                    loge(SYNTAX_TAG, "[-]error: method define need \";\" at end: %s", token->content);
-                    return nullptr;
-                }
                 token = token->next;
             } else {
-                //method code block
-                astMethodDefine->statementBlock = (AstStatementBlock *) pccMalloc(SYNTAX_TAG,
-                                                                                  sizeof(AstStatementBlock));
-                token = travelAst(token, astMethodDefine->statementBlock, NODE_STATEMENT_BLOCK);
+                if (astMethodDefine->defineType == METHOD_EXTERN) {
+                    loge(SYNTAX_TAG, "[-]error: method define need \";\" at end: %s", token->content);
+                    exit(-1);
+                } else {
+                    //method code block
+                    astMethodDefine->statementBlock = (AstStatementBlock *) pccMalloc(SYNTAX_TAG,
+                                                                                      sizeof(AstStatementBlock));
+                    token = travelAst(token, astMethodDefine->statementBlock, NODE_STATEMENT_BLOCK);
+                }
             }
             popMethod();
             break;
@@ -186,7 +270,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             AstParamDefine *astParamDefine = (AstParamDefine *) currentNode;
             if (token->tokenType != TOKEN_TYPE && token->tokenType != TOKEN_POINTER_TYPE) {
                 loge(SYNTAX_TAG, "[-]error: param define need type: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             astParamDefine->type = (AstType *) pccMalloc(SYNTAX_TAG, sizeof(AstType));
             astParamDefine->type->primitiveType = convertTokenType2PrimitiveType(token->content);
@@ -194,7 +278,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             token = token->next;
             if (token->tokenType != TOKEN_IDENTIFIER) {
                 loge(SYNTAX_TAG, "[-]error: param define need identifier: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             astParamDefine->identity = (AstIdentity *) pccMalloc(SYNTAX_TAG, sizeof(AstIdentity));
             astParamDefine->identity->name = token->content;
@@ -208,7 +292,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             //block {
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, "{") != 0) {
                 loge(SYNTAX_TAG, "[-]error: code block define need {: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             token = token->next;
             //statement seq
@@ -221,7 +305,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             //block }
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, "}") != 0) {
                 loge(SYNTAX_TAG, "[-]error: code block define need }: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             token = token->next;
             break;
@@ -278,7 +362,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 token = token->next;
                 if (token->tokenType != TOKEN_IDENTIFIER) {
                     loge(SYNTAX_TAG, "[-]error: var define need identifier: %s", token->content);
-                    return nullptr;
+                    exit(-1);
                 }
                 astStatement->defineStatement->identity = (AstIdentity *) pccMalloc(SYNTAX_TAG, sizeof(AstIdentity));
                 astStatement->defineStatement->identity->name = token->content;
@@ -287,7 +371,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 token = token->next;
                 if (token->tokenType != TOKEN_OPERATOR || strcmp(token->content, "=") != 0) {
                     loge(SYNTAX_TAG, "[-]error: var define need init fromValue: %s", token->content);
-                    return nullptr;
+                    exit(-1);
                 }
                 //consume =
                 token = token->next;
@@ -376,7 +460,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             token = token->next;
             if (token->tokenType != TOKEN_OPERATOR || strcmp(token->content, "=") != 0) {
                 loge(SYNTAX_TAG, "[-]error: var assignment need fromValue: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             //consume =
             token = token->next;
@@ -402,7 +486,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             AstStatementIf *astStatementIf = (AstStatementIf *) currentNode;
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, "(") != 0) {
                 loge(SYNTAX_TAG, "[-]error: need (: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             //consume (
             token = token->next;
@@ -410,7 +494,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             token = travelAst(token, astStatementIf->expression, NODE_EXPRESSION_BOOL);
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ")") != 0) {
                 loge(SYNTAX_TAG, "[-]error: need ): %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             //consume )
             token = token->next;
@@ -430,7 +514,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             AstStatementWhile *astStatementWhile = (AstStatementWhile *) currentNode;
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, "(") != 0) {
                 loge(SYNTAX_TAG, "[-]error: need (: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             //consume (
             token = token->next;
@@ -438,7 +522,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             token = travelAst(token, astStatementWhile->expression, NODE_EXPRESSION_BOOL);
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ")") != 0) {
                 loge(SYNTAX_TAG, "[-]error: need ): %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             //consume )
             token = token->next;
@@ -450,7 +534,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             AstStatementFor *astStatementFor = (AstStatementFor *) currentNode;
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, "(") != 0) {
                 loge(SYNTAX_TAG, "[-]error: need (: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             //consume (
             token = token->next;
@@ -462,7 +546,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             }
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ";") != 0) {
                 loge(SYNTAX_TAG, "[-]error: for 1st need ;: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             //consume ;
             token = token->next;
@@ -475,7 +559,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             }
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ";") != 0) {
                 loge(SYNTAX_TAG, "[-]error: for 2nd need ;: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             //consume ;
             token = token->next;
@@ -487,7 +571,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             }
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ")") != 0) {
                 loge(SYNTAX_TAG, "[-]error: need ): %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             //consume )
             token = token->next;
@@ -507,7 +591,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             }
             if (token->tokenType != TOKEN_BOUNDARY || strcmp(token->content, ";") != 0) {
                 loge(SYNTAX_TAG, "[-]error: return need ;: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             //consume ;
             token = token->next;
@@ -621,7 +705,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                         //do not consume method call's ;
                     } else {
                         loge(SYNTAX_TAG, "[-]error: undefined method: %s", token->content);
-                        return nullptr;
+                        exit(-1);
                     }
                 } else {
                     if (hasVarDefine(token->content)) {
@@ -632,7 +716,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                         token = token->next;
                     } else {
                         loge(SYNTAX_TAG, "[-]error: undefined var: %s", token->content);
-                        return nullptr;
+                        exit(-1);
                     }
                 }
             } else if (token->tokenType == TOKEN_INTEGER || token->tokenType == TOKEN_FLOAT) {
@@ -642,7 +726,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 token = travelAst(token, astArithmeticFactor->primitiveData, NODE_PRIMITIVE_DATA);
             } else if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, "(") == 0) {
                 loge(SYNTAX_TAG, "[-]error: not impl yet: %s", token->content);
-                return nullptr;
+                exit(-1);
             } else if (token->tokenType == TOKEN_BOUNDARY && strcmp(token->content, "{") == 0) {
                 //array, consume {
                 token = token->next;
@@ -681,7 +765,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 astArithmeticFactor->identity = (AstIdentity *) pccMalloc(SYNTAX_TAG, sizeof(AstIdentity));
                 astArithmeticFactor->identity->name = token->content;
                 token = token->next;
-                return nullptr;
+                exit(-1);
             } else if (token->tokenType == TOKEN_POINTER_OPERATOR) {
                 if (strcmp(token->content, "&") == 0) {
                     //get address for identity
@@ -697,7 +781,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 token = token->next;
             } else {
                 loge(SYNTAX_TAG, "[-]error: except valid identifier or num: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             break;
         }
@@ -850,7 +934,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
             AstBoolFactorInvert *astBoolFactorInvert = (AstBoolFactorInvert *) currentNode;
             if (token->tokenType != TOKEN_OPERATOR || strcmp(token->content, "!") != 0) {
                 loge(SYNTAX_TAG, "[-]error: need ;: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             //consume !
             token = token->next;
@@ -868,7 +952,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
 
             if (token->tokenType != TOKEN_OPERATOR && token->tokenType != TOKEN_OPERATOR_2) {
                 loge(SYNTAX_TAG, "[-]error: need relation operator: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             if (strcmp(token->content, "==") == 0) {
                 astBoolFactorCompareArithmetic->relationOperation = RELATION_EQ;
@@ -884,7 +968,7 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
                 astBoolFactorCompareArithmetic->relationOperation = RELATION_LESS_EQ;
             } else {
                 loge(SYNTAX_TAG, "[-]error: unknown relation operator: %s", token->content);
-                return nullptr;
+                exit(-1);
             }
             //consume relation op
             token = token->next;

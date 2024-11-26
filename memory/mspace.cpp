@@ -7,8 +7,6 @@
 
 #define MSPACE_TAG "mspace"
 
-using namespace std;
-
 struct MemNode {
     void *addr;
     MemNode *next;

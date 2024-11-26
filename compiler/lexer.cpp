@@ -5,10 +5,7 @@
 #include <string.h>
 #include "lexer.h"
 #include "logger.h"
-#include <stack>
 #include "mspace.h"
-
-using namespace std;
 
 static const char *LEXER_TAG = "lexer";
 static const char *VAR_TAG = "var";

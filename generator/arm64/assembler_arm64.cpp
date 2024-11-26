@@ -3,15 +3,16 @@
 //
 
 #include <stdio.h>
-#include <vector>
+#include <stdlib.h>
+#include <string.h>
 #include "assembler_arm64.h"
 #include "logger.h"
 #include "file.h"
 #include "register_arm64.h"
 #include "binary_arm64.h"
 #include "linux_syscall.h"
-
-using namespace std;
+#include "mspace.h"
+#include "stack.h"
 
 #define ARM64_TAG "arm64_asm"
 
@@ -39,8 +40,30 @@ int alignStackSize(int reqSize) {
     }
     return blocks * ARM_STACK_ALIGN;
 }
+//
+//struct StackVarListNode {
+//    StackVar *stackVar;
+//    StackVarListNode *next;
+//};
+//static StackVarListNode *currentStackVarListHead;
 
-static vector<StackVar *> currentStackVarList;
+static Stack *currentStackVarStack = createStack(ARM64_TAG);
+
+static inline void pushStackVar(StackVar *stackVar) {
+    currentStackVarStack->push(currentStackVarStack, stackVar);
+//    StackVarListNode *stackVarListNode = (StackVarListNode *) pccMalloc(ARM64_TAG, sizeof(StackVarListNode));
+//    stackVarListNode->next = nullptr;
+//    stackVarListNode->stackVar = stackVar;
+//    if (currentStackVarListHead == nullptr) {
+//        currentStackVarListHead = stackVarListNode;
+//    } else {
+//        StackVarListNode *p = currentStackVarListHead;
+//        while (p->next != nullptr) {
+//            p = p->next;
+//        }
+//        p->next = stackVarListNode;
+//    }
+}
 
 const char *getSection(SectionType sectionType) {
     switch (sectionType) {
@@ -55,10 +78,13 @@ const char *getSection(SectionType sectionType) {
     }
 }
 
-static vector<int> regInUseList;
+
+static int regInUseList[31];
+static int regInUseTopIndex = 0;
 
 static void atomicRegister() {
-    regInUseList.clear();
+    memset(regInUseList, 0, sizeof(int) * 31);
+    regInUseTopIndex = 0;
 }
 
 char *getCommonRegName(int regIndex, int size) {
@@ -179,7 +205,7 @@ int leastRecentlyUseLine(MirCode *mirCode, const char *varName) {
 int usedRegs = 0;
 
 bool isRegAtomicInUse(int bestRegIndex) {
-    for (int i = 0; i < regInUseList.size(); i++) {
+    for (int i = 0; i < regInUseTopIndex; i++) {
         if (regInUseList[i] == bestRegIndex) {
             return true;
         }
@@ -217,7 +243,7 @@ int allocEmptyReg(MirCode *mirCode) {
             }
         }
         if (bestRegIndex != -1) {
-            regInUseList.push_back(bestRegIndex);
+            regInUseList[regInUseTopIndex++] = bestRegIndex;
         }
         return bestRegIndex;
     }
@@ -249,16 +275,18 @@ int allocVarFromStack(const char *varName, int sizeInByte) {
     currentStackTop = alignDownTo(currentStackTop, ARM_BLOCK_64_ALIGN);
     currentStackTop -= size;
     stackVar->stackOffset = currentStackTop;
-    currentStackVarList.push_back(stackVar);
+    pushStackVar(stackVar);
     return stackVar->stackOffset;
 }
 
 int getVarSizeFromStack(const char *varName) {
-    for (int i = 0; i < currentStackVarList.size(); i++) {
-        if (strcmp(currentStackVarList[i]->varName, varName) == 0) {
-            return currentStackVarList[i]->varSize;
-            break;
+    currentStackVarStack->resetIterator(currentStackVarStack);
+    StackVar *p = (StackVar *) currentStackVarStack->iteratorNext(currentStackVarStack);
+    while (p != nullptr) {
+        if (strcmp(p->varName, varName) == 0) {
+            return p->varSize;
         }
+        p = (StackVar *) currentStackVarStack->iteratorNext(currentStackVarStack);
     }
     loge(ARM64_TAG, "unknown var size %s", varName);
     return -1;
@@ -313,15 +341,16 @@ int getOperandSize(MirOperand *mirOperand) {
  * @param sizeInByte
  * @return offset from stack bottom
  */
-int getVarFromStack(const char *varName) {
-    int offset = -1;
-    for (int i = 0; i < currentStackVarList.size(); i++) {
-        if (strcmp(currentStackVarList[i]->varName, varName) == 0) {
-            offset = currentStackVarList[i]->stackOffset;
-            break;
+uint64_t getVarStackOffset(const char *varName) {
+    currentStackVarStack->resetIterator(currentStackVarStack);
+    StackVar *p = (StackVar *) currentStackVarStack->iteratorNext(currentStackVarStack);
+    while (p != nullptr) {
+        if (strcmp(p->varName, varName) == 0) {
+            return p->stackOffset;
         }
+        p = (StackVar *) currentStackVarStack->iteratorNext(currentStackVarStack);
     }
-    return offset;
+    return -1;
 }
 
 void releaseStack(int stackSize) {
@@ -365,7 +394,7 @@ int loadVarIntoReg(MirCode *mirCode, MirOperand *mirOperand) {
     }
     int fromRegIndex = isVarExistInCommonReg(mirOperand->identity);
     if (fromRegIndex == -1) {
-        int stackOffset = getVarFromStack(mirOperand->identity);
+        int stackOffset = getVarStackOffset(mirOperand->identity);
         if (stackOffset == -1) {
             loge(ARM64_TAG, "internal error: can not found var %s on stack", mirOperand->identity);
             return -1;
@@ -465,7 +494,7 @@ void generateCodes(MirCode *mirCode) {
             if (fromValueMirOperand->type.primitiveType == OPERAND_IDENTITY) {
                 int fromRegIndex = isVarExistInCommonReg(fromValueMirOperand->identity);
                 if (fromRegIndex == -1) {
-                    int stackOffset = getVarFromStack(fromValueMirOperand->identity);
+                    int stackOffset = getVarStackOffset(fromValueMirOperand->identity);
                     if (stackOffset == -1) {
                         loge(ARM64_TAG, "internal error: can not found var %s on stack", fromValueMirOperand->identity);
                     }
@@ -527,7 +556,7 @@ void generateCodes(MirCode *mirCode) {
                 }
             }
             commonRegsVarName[distRegIndex] = mir2->distIdentity;
-            int distStackOffset = getVarFromStack(mir2->distIdentity);
+            int distStackOffset = getVarStackOffset(mir2->distIdentity);
             if (distStackOffset == -1) {
                 int distSize = getMirOperandSizeInByte(mir2->distType);
                 distStackOffset = allocVarFromStack(mir2->distIdentity, distSize);
@@ -705,7 +734,7 @@ void generateCodes(MirCode *mirCode) {
                     break;
             }
             commonRegsVarName[distRegIndex] = mir3->distIdentity;
-            int distStackOffset = getVarFromStack(mir3->distIdentity);
+            int distStackOffset = getVarStackOffset(mir3->distIdentity);
             if (distStackOffset == -1) {
                 int distSize = getMirOperandSizeInByte(mir3->distType);
                 distStackOffset = allocVarFromStack(mir3->distIdentity, distSize);
@@ -980,35 +1009,41 @@ int computeMethodStackSize(MirMethod *mirMethod) {
         mirMethodParam = mirMethodParam->next;
     }
     //compute var size
-    vector<const char *> varList;
+    Stack *currentMethodVarList = createStack(ARM64_TAG);//const char *
     MirCode *mirCode = mirMethod->code;
     while (mirCode != nullptr) {
         switch (mirCode->mirType) {
             case MIR_3: {
                 bool varFound = false;
-                for (int i = 0; i < varList.size(); i++) {
-                    if (strcmp(varList[i], mirCode->mir3->distIdentity) == 0) {
+                currentMethodVarList->resetIterator(currentMethodVarList);
+                const char *varIdentity = (const char *) currentMethodVarList->iteratorNext(currentMethodVarList);
+                while (varIdentity != nullptr) {
+                    if (strcmp(varIdentity, mirCode->mir3->distIdentity) == 0) {
                         varFound = true;
                         break;
                     }
+                    varIdentity = (const char *) currentMethodVarList->iteratorNext(currentMethodVarList);
                 }
                 if (!varFound) {
                     stackSizeInByte += ARM_BLOCK_64_ALIGN;
-                    varList.push_back(mirCode->mir3->distIdentity);
+                    currentMethodVarList->push(currentMethodVarList, (void *) mirCode->mir3->distIdentity);
                 }
                 break;
             }
             case MIR_2: {
                 bool varFound = false;
-                for (int i = 0; i < varList.size(); i++) {
-                    if (strcmp(varList[i], mirCode->mir2->distIdentity) == 0) {
+                currentMethodVarList->resetIterator(currentMethodVarList);
+                const char *varIdentity = (const char *) currentMethodVarList->iteratorNext(currentMethodVarList);
+                while (varIdentity != nullptr) {
+                    if (strcmp(varIdentity, mirCode->mir2->distIdentity) == 0) {
                         varFound = true;
                         break;
                     }
+                    varIdentity = (const char *) currentMethodVarList->iteratorNext(currentMethodVarList);
                 }
                 if (!varFound) {
                     stackSizeInByte += ARM_BLOCK_64_ALIGN;
-                    varList.push_back(mirCode->mir2->distIdentity);
+                    currentMethodVarList->push(currentMethodVarList, (void *) mirCode->mir2->distIdentity);
                 }
                 break;
             }

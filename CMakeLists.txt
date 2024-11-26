@@ -16,6 +16,13 @@ include_directories(
         "compiler"
         "generator"
         "wrapper"
+        "utils"
+)
+
+file(GLOB_RECURSE UTILS_SRC
+        "utils/*.cc"
+        "utils/*.c"
+        "utils/*.cpp"
 )
 
 file(GLOB_RECURSE LOGGER_SRC
@@ -66,6 +73,7 @@ add_executable(pcc
         ${COMPILER_SRC}
         ${GENERATOR_SRC}
         ${WRAPPER_SRC}
+        ${UTILS_SRC}
         generator/arm64/register_arm64.h
         generator/assembler.cpp
         generator/assembler.h
