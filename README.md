@@ -1,6 +1,10 @@
 # pcc-kit
 park's C compiler kit. compile C source code into arm64 / x86_64 binary, wrapper it into windows PE(.exe), linux elf, darwin macho(macOS / iOS).
 
+windows 11 arm64: ![20241121-153324](https://github.com/user-attachments/assets/71859b28-9325-4304-9947-f795043f547c)
+ubuntu 22 arm64: ![20241119-104946](https://github.com/user-attachments/assets/d007db9d-ee88-4b68-a69c-77e5e259da82)
+
+
 ### latest version: 0.3.001
 ### latest update: 2024-11-25
 ### project desc:
