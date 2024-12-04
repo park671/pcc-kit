@@ -23,6 +23,7 @@ void generateElfArm64(Mir *mir,
         outputFileName = "output.elf";
     }
     openFile(outputFileName);
+    const uint64_t alignment = 4096;
 
     uint64_t programEntry = 0;
     int programHeaderCount = 0;
@@ -36,12 +37,12 @@ void generateElfArm64(Mir *mir,
     programEntry += programHeaderCount * sizeof(Elf64_Phdr);//program header
     programEntry += sectionHeaderCount * sizeof(Elf64_Shdr);//section header
 
-    programEntry = alignTo(programEntry, 4096);
+    programEntry = alignTo(programEntry, alignment);
     uint64_t textBufferSize = getInstBufferSize();
     uint64_t dataEntry = alignTo(programEntry + textBufferSize, 4096);//file & vaddr use same alignment
     uint64_t dataTextVaddrOffset = dataEntry - programEntry;
     //relocate & get binary
-    relocateBinary(dataTextVaddrOffset);
+    relocateBinary(dataTextVaddrOffset, alignment);
     InstBuffer *instBuffer = getEmittedInstBuffer();
     DataBuffer *dataBuffer = getEmittedDataBuffer();
 
@@ -137,14 +138,14 @@ void generatePeArm64(Mir *mir,
     }
     openFile(outputFileName);
 
-    const int sectionAlignment = 4096; // 内存对齐
+    const int ramAlignment = 4096; // 内存对齐
     const int fileAlignment = 512;    // 文件对齐
 
     int currentOffset = 0;
     // 1. 生成指令缓冲区
     initWindowsArm64ProgramStart();
     int sectionCount = generateArm64Target(mir); // 根据 mir 生成指令
-    relocateBinary(0);
+    relocateBinary(0, ramAlignment);
     InstBuffer *instBuffer = getEmittedInstBuffer(); // 获取生成的指令缓冲区
     // 2. PE 可选头与节偏移设置
     currentOffset += getPeHeaderSize();
@@ -158,8 +159,8 @@ void generatePeArm64(Mir *mir,
 
     int textSectionFileOffset = alignTo(currentOffset, fileAlignment);
     int textSectionFileSize = alignTo(instBuffer->size, fileAlignment);
-    int textSectionVirtualAddress = alignTo(currentOffset, sectionAlignment);
-    int textSectionVirtualSize = alignTo(instBuffer->size, sectionAlignment);
+    int textSectionVirtualAddress = alignTo(currentOffset, ramAlignment);
+    int textSectionVirtualSize = alignTo(instBuffer->size, ramAlignment);
 
     // 3. 生成节表
     SectionHeader *textSectionHeader = createSectionHeader(".text",
@@ -176,7 +177,7 @@ void generatePeArm64(Mir *mir,
                                     textSectionFileSize,
                                     textSectionVirtualAddress,
                                     IMAGE_BASE_64_EXE, // 默认 ImageBase
-                                    sectionAlignment,
+                                    ramAlignment,
                                     fileAlignment);
 
     // 5. 写入 PE 文件
@@ -207,7 +208,7 @@ void generateMachoArm64(Mir *mir,
 
     // Generate ARM64 target code
     generateArm64Target(mir);
-    relocateBinary(0);
+    relocateBinary(0, ram_alignment);
     InstBuffer *instBuffer = getEmittedInstBuffer();
 
     // Calculate offsets and counts

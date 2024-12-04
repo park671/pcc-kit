@@ -524,7 +524,8 @@ void generateCodes(MirCode *mirCode) {
                     );
                 } else if (fromValueMirOperand->type.isPointer) {
                     const char *dataLabel = fromValueMirOperand->identity;
-                    binaryOpAdr(INST_ADR, commonRegisterBinary[distRegIndex], dataLabel);
+                    //todo estimate offset to determined using adr / adrp
+                    binaryOpAdr(INST_ADRP, commonRegisterBinary[distRegIndex], dataLabel);
                 } else {
                     switch (fromValueMirOperand->type.primitiveType) {
                         case OPERAND_INT8:

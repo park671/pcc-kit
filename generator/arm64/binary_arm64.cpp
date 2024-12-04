@@ -5,6 +5,7 @@
 #include "binary_arm64.h"
 #include "logger.h"
 #include "mspace.h"
+#include "file.h"
 #include "register_arm64.h"
 
 #define BIN_TAG "arm64_bin"
@@ -32,7 +33,8 @@ struct InstDataRelocateInfo {
 
 enum InstRelocateType {
     RELOCATE_BRANCH,
-    RELOCATE_DATA
+    RELOCATE_DATA,
+    RELOCATE_DATA_FIX,
 };
 
 struct InstList {
@@ -98,9 +100,19 @@ void emitRelocateDataInst(Arm64Inst inst, Operand dist, const char *label) {
     instList->dataRelocateInfo.inst = inst;
     instList->dataRelocateInfo.dist = dist;
     instList->dataRelocateInfo.label = label;
-
-    instList->next = nullptr;
     instList->index = instCount++;
+
+    InstList *fixAddList = nullptr;
+    if (inst == INST_ADRP) {
+        fixAddList = (InstList *) pccMalloc(BIN_TAG, sizeof(InstList));
+        fixAddList->inst = 0;
+        fixAddList->needRelocation = true;
+        fixAddList->relocateType = RELOCATE_DATA_FIX;
+        fixAddList->index = instCount++;
+        fixAddList->next = nullptr;
+    }
+
+    instList->next = fixAddList;
     if (instListHead == nullptr) {
         instListHead = instList;
     } else {
@@ -152,13 +164,18 @@ Inst realBinaryOpBranch(Arm64Inst inst, BranchCondition branchCondition, uint64_
 
 Inst realBinaryOpAdr(Arm64Inst inst, Operand dist, uint64_t offset);
 
+Inst realBinaryAdd(uint32_t is64Bit, Operand x, Operand a, Operand b, bool bImm);
+
+Inst realBinarySub(uint32_t is64Bit, Operand x, Operand a, Operand b, bool bImm);
+
 static volatile bool relocated = false;
 
 uint64_t getInstBufferSize() {
     return getCurrentInstCount() * sizeof(Inst);
 }
 
-void relocateBinary(uint64_t dataTextVaddrOffset) {
+void relocateBinary(uint64_t dataSectionVaddrOffset, uint64_t alignment) {
+    logd(BIN_TAG, "arm64 target relocation...");
     InstList *p = instListHead;
     while (p != nullptr) {
         if (p->needRelocation) {
@@ -179,22 +196,53 @@ void relocateBinary(uint64_t dataTextVaddrOffset) {
                     break;
                 }
                 case RELOCATE_DATA: {
-                    uint64_t dataOffset = getDataOffset(p->dataRelocateInfo.label);
-                    if (dataOffset == INTMAX_MAX) {
+                    uint64_t dataSectionInnerOffset = getDataOffset(p->dataRelocateInfo.label);
+                    if (dataSectionInnerOffset == INTMAX_MAX) {
                         loge(BIN_TAG, "data not found when relocation");
                         exit(-1);
                     }
-                    uint64_t dataLabelOffset = (dataTextVaddrOffset + dataOffset) - (p->index * 4);
-                    p->inst = realBinaryOpAdr(
-                            p->dataRelocateInfo.inst,
-                            p->dataRelocateInfo.dist,
-                            dataLabelOffset
-                    );
+                    if (p->dataRelocateInfo.inst == INST_ADR) {
+                        uint64_t dataLabelOffset = (dataSectionVaddrOffset + dataSectionInnerOffset) - (p->index * 4);
+                        p->inst = realBinaryOpAdr(
+                                p->dataRelocateInfo.inst,
+                                p->dataRelocateInfo.dist,
+                                dataLabelOffset
+                        );
+                    } else if (p->dataRelocateInfo.inst == INST_ADRP) {
+                        uint64_t pcOffset = p->index * 4;
+                        uint64_t pcPageOffset = pcOffset & ~0xFFF;
+                        uint64_t dataOffset = dataSectionVaddrOffset + dataSectionInnerOffset;
+                        uint64_t dataPageOffset = dataOffset & ~0xFFF;
+                        uint64_t pageDiff = dataPageOffset - pcPageOffset;
+                        p->inst = realBinaryOpAdr(
+                                p->dataRelocateInfo.inst,
+                                p->dataRelocateInfo.dist,
+                                pageDiff >> 12
+                        );
+                        int64_t immLow = (((int64_t) dataOffset) - ((int64_t) dataPageOffset));
+                        if (immLow < 0) {
+                            loge(BIN_TAG, "negative offset low imm add inst after adrp!");
+                            exit(-1);
+                        }
+                        //add immLow to adrp result
+                        InstList *fixInst = p->next;
+                        if (fixInst == nullptr || !fixInst->needRelocation) {
+                            loge(BIN_TAG, "no offset low imm add inst after adrp!");
+                            exit(-1);
+                        }
+                        fixInst->inst = realBinaryAdd(true,
+                                                      p->dataRelocateInfo.dist,
+                                                      p->dataRelocateInfo.dist,
+                                                      immLow,
+                                                      true);
+                        fixInst->needRelocation = false;
+                    }
                     p->needRelocation = false;
                     break;
                 }
                 default: {
                     loge(BIN_TAG, "unknown relocation type:%d", p->relocateType);
+                    exit(-1);
                 }
             }
         }
@@ -233,6 +281,44 @@ InstBuffer *getEmittedInstBuffer() {
     return buffer;
 }
 
+Inst realBinaryAdd(uint32_t is64Bit, Operand x, Operand a, Operand b, bool bImm) {
+    Inst inst;
+    if (bImm) {
+        if (b < 0) {
+            return realBinarySub(is64Bit, x, a, -b, bImm);
+        }
+        logd(BIN_TAG, "\tadd %s, %s, #%d", revertRegisterNames[x], revertRegisterNames[a], b);
+        uint32_t imm12 = (b & 0xFFF);  // 12bit imm
+        inst = 0x11000000 | is64Bit << 31;  // 32: 0x11, 64位: 0x91
+        inst = inst | x | a << 5 | imm12 << 10;// ADD x, a, #imm12
+    } else {
+        logd(BIN_TAG, "\tadd %s, %s, %s", revertRegisterNames[x], revertRegisterNames[a],
+             revertRegisterNames[b]);
+        inst = 0x0b000000 | is64Bit << 31;  // 32: 0x0b, 64位: 0x8b
+        inst = inst | x | a << 5 | b << 16;  // ADD x, a, b
+    }
+    return inst;
+}
+
+Inst realBinarySub(uint32_t is64Bit, Operand x, Operand a, Operand b, bool bImm) {
+    Inst inst;
+    if (bImm) {
+        if (b < 0) {
+            return realBinaryAdd(is64Bit, x, a, -b, bImm);
+        }
+        logd(BIN_TAG, "\tsub %s, %s, #%d", revertRegisterNames[x], revertRegisterNames[a], b);
+        uint32_t imm12 = (b & 0xFFF);
+        inst = 0x51000000 | is64Bit << 31;  // 32: 0x51, 64位: 0xd1
+        inst = inst | x | a << 5 | imm12 << 10;  // SUB x, a, #imm12
+    } else {
+        logd(BIN_TAG, "\tsub %s, %s, %s", revertRegisterNames[x], revertRegisterNames[a],
+             revertRegisterNames[b]);
+        inst = 0x4b000000 | is64Bit << 31;  // 32: 0x4b, 64位: 0xcb
+        inst = inst | x | a << 5 | b << 16;  // SUB x, a, b
+    }
+    return inst;
+}
+
 /**
  * INST_ADD INST_SUB INST_MUL div INST_MOD
  * @param inst
@@ -256,31 +342,11 @@ void binaryOp3(Arm64Inst inst, uint32_t is64Bit, Operand x, Operand a, Operand b
             break;
         }
         case INST_ADD: {
-            if (bImm) {
-                logd(BIN_TAG, "\tadd %s, %s, #%d", revertRegisterNames[x], revertRegisterNames[a], b);
-                uint32_t imm12 = (b & 0xFFF);  // 12bit imm
-                baseOp = 0x11000000 | is64Bit << 31;  // 32: 0x11, 64位: 0x91
-                emitInst(baseOp | x | a << 5 | imm12 << 10);  // ADD x, a, #imm12
-            } else {
-                logd(BIN_TAG, "\tadd %s, %s, %s", revertRegisterNames[x], revertRegisterNames[a],
-                     revertRegisterNames[b]);
-                baseOp = 0x0b000000 | is64Bit << 31;  // 32: 0x0b, 64位: 0x8b
-                emitInst(baseOp | x | a << 5 | b << 16);  // ADD x, a, b
-            }
+            emitInst(realBinaryAdd(is64Bit, x, a, b, bImm));
             break;
         }
         case INST_SUB: {
-            if (bImm) {
-                logd(BIN_TAG, "\tsub %s, %s, #%d", revertRegisterNames[x], revertRegisterNames[a], b);
-                uint32_t imm12 = (b & 0xFFF);
-                baseOp = 0x51000000 | is64Bit << 31;  // 32: 0x51, 64位: 0xd1
-                emitInst(baseOp | x | a << 5 | imm12 << 10);  // SUB x, a, #imm12
-            } else {
-                logd(BIN_TAG, "\tsub %s, %s, %s", revertRegisterNames[x], revertRegisterNames[a],
-                     revertRegisterNames[b]);
-                baseOp = 0x4b000000 | is64Bit << 31;  // 32: 0x4b, 64位: 0xcb
-                emitInst(baseOp | x | a << 5 | b << 16);  // SUB x, a, b
-            }
+
             break;
         }
         case INST_SDIV: {
@@ -702,8 +768,12 @@ Inst realBinaryOpAdr(Arm64Inst inst, Operand dist, uint64_t offset) {
             break;
         }
         case INST_ADRP: {
-            loge(BIN_TAG, "realBinaryOpAdr not impl adrp");
-            exit(-1);
+            uint64_t offsetLow = offset & 0x3;
+            uint64_t offsetHigh = offset >> 2;
+            instruction = 0x90000000;
+            instruction |= dist;
+            instruction |= offsetLow << 29;
+            instruction |= offsetHigh << 5;
             break;
         }
         default: {
@@ -717,10 +787,10 @@ Inst realBinaryOpAdr(Arm64Inst inst, Operand dist, uint64_t offset) {
 void binaryOpAdr(Arm64Inst inst, Operand dist, const char *label) {
     if (inst == INST_ADR) {
         logd(BIN_TAG, "\tadr %s, %s", revertRegisterNames[dist], label);
-
         emitRelocateDataInst(inst, dist, label);
     } else if (inst == INST_ADRP) {
         logd(BIN_TAG, "\tadrp %s, %s", revertRegisterNames[dist], label);
+        emitRelocateDataInst(inst, dist, label);
     } else {
         loge(BIN_TAG, "unknown address inst: %d", inst);
         exit(-1);

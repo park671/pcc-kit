@@ -23,4 +23,8 @@ void initLinuxArm64SyscallWrapper() {
     binaryOp2(INST_MOV, 1, X8, SYS_READ, true);
     binaryOpSvc(INST_SVC, 0);
     binaryOpRet(INST_RET);
+    emitLabel("fork");
+    binaryOp2(INST_MOV, 1, X8, SYS_FORK, true);
+    binaryOpSvc(INST_SVC, 0);
+    binaryOpRet(INST_RET);
 }

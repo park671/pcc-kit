@@ -76,7 +76,7 @@ uint64_t getInstBufferSize();
 
 void emitLabel(const char *label);
 
-void relocateBinary(uint64_t dataTextVaddrOffset);
+void relocateBinary(uint64_t dataSectionVaddrOffset, uint64_t alignment);
 
 InstBuffer *getEmittedInstBuffer();
 
