@@ -12,7 +12,7 @@
 
 #include <stdint.h>
 
-// 定义 PE 文件头中的 Machine 字段枚举
+// 定义 PE 文件头中的 machine 字段枚举
 enum {
     IMAGE_FILE_MACHINE_UNKNOWN = 0x0,      // 未知架构
     IMAGE_FILE_MACHINE_AMD64 = 0x8664,   // x64 (AMD64/EM64T)
@@ -33,7 +33,7 @@ enum {
 
 #include <stdint.h>
 
-// 定义 Characteristics 枚举
+// 定义 characteristics 枚举
 enum {
     IMAGE_FILE_RELOCS_STRIPPED = 0x0001, // 没有重定位信息
     IMAGE_FILE_EXECUTABLE_IMAGE = 0x0002, // 文件是可执行的
@@ -54,59 +54,59 @@ enum {
 
 // 定义 COFF 头结构
 typedef struct {
-    uint32_t Signature;   // "PE\0\0" 签名
-    uint16_t Machine;     // 目标架构 (0x8664 for x64)
-    uint16_t NumberOfSections;
-    uint32_t TimeDateStamp;
-    uint32_t PointerToSymbolTable;
-    uint32_t NumberOfSymbols;
-    uint16_t SizeOfOptionalHeader;
-    uint16_t Characteristics;
+    uint32_t signature;   // "PE\0\0" 签名
+    uint16_t machine;     // 目标架构 (0x8664 for x64)
+    uint16_t numberOfSections;
+    uint32_t timeDateStamp;
+    uint32_t pointerToSymbolTable;
+    uint32_t numberOfSymbols;
+    uint16_t sizeOfOptionalHeader;
+    uint16_t characteristics;
 } CoffHeader;
 
 // 定义数据目录结构
 typedef struct {
-    uint32_t VirtualAddress; // 数据目录的 RVA
-    uint32_t Size;           // 数据目录的大小
+    uint32_t virtualAddress; // 数据目录的 RVA
+    uint32_t size;           // 数据目录的大小
 } DataDirectory;
 
 // 修正后的 OptionalHeader 结构体（支持 PE32+）
 typedef struct {
-    uint16_t Magic;               // 0x20B 表示 PE32+
-    uint8_t MajorLinkerVersion;
-    uint8_t MinorLinkerVersion;
-    uint32_t SizeOfCode;
-    uint32_t SizeOfInitializedData;
-    uint32_t SizeOfUninitializedData;
-    uint32_t AddressOfEntryPoint;
-    uint32_t BaseOfCode;
-    uint64_t ImageBase;           // 8字节（PE32+）
-    uint32_t SectionAlignment;
-    uint32_t FileAlignment;
-    uint16_t MajorOperatingSystemVersion;
-    uint16_t MinorOperatingSystemVersion;
-    uint16_t MajorImageVersion;
-    uint16_t MinorImageVersion;
-    uint16_t MajorSubsystemVersion;
-    uint16_t MinorSubsystemVersion;
-    uint32_t Win32VersionValue;   // 保留，必须为 0
-    uint32_t SizeOfImage;
-    uint32_t SizeOfHeaders;
-    uint32_t CheckSum;
-    uint16_t Subsystem;
-    uint16_t DllCharacteristics;
-    uint64_t SizeOfStackReserve;  // 栈保留大小
-    uint64_t SizeOfStackCommit;   // 栈提交大小
-    uint64_t SizeOfHeapReserve;   // 堆保留大小
-    uint64_t SizeOfHeapCommit;    // 堆提交大小
-    uint32_t LoaderFlags;         // 保留，必须为 0
-    uint32_t NumberOfRvaAndSizes; // 数据目录数量（通常为 16）
-    DataDirectory DataDirectory[16]; // 数据目录数组
+    uint16_t magic;               // 0x20B 表示 PE32+
+    uint8_t majorLinkerVersion;
+    uint8_t minorLinkerVersion;
+    uint32_t sizeOfCode;
+    uint32_t sizeOfInitializedData;
+    uint32_t sizeOfUninitializedData;
+    uint32_t addressOfEntryPoint;
+    uint32_t baseOfCode;
+    uint64_t imageBase;           // 8字节（PE32+）
+    uint32_t sectionAlignment;
+    uint32_t fileAlignment;
+    uint16_t majorOperatingSystemVersion;
+    uint16_t minorOperatingSystemVersion;
+    uint16_t majorImageVersion;
+    uint16_t minorImageVersion;
+    uint16_t majorSubsystemVersion;
+    uint16_t minorSubsystemVersion;
+    uint32_t win32VersionValue;   // 保留，必须为 0
+    uint32_t sizeOfImage;
+    uint32_t sizeOfHeaders;
+    uint32_t checkSum;
+    uint16_t subsystem;
+    uint16_t dllCharacteristics;
+    uint64_t sizeOfStackReserve;  // 栈保留大小
+    uint64_t sizeOfStackCommit;   // 栈提交大小
+    uint64_t sizeOfHeapReserve;   // 堆保留大小
+    uint64_t sizeOfHeapCommit;    // 堆提交大小
+    uint32_t loaderFlags;         // 保留，必须为 0
+    uint32_t numberOfRvaAndSizes; // 数据目录数量（通常为 16）
+    DataDirectory dataDirectory[16]; // 数据目录数组
 } OptionalHeader;
 
 #include <stdint.h>
 
-// 定义 SectionHeader 的 Characteristics 枚举
+// 定义 SectionHeader 的 characteristics 枚举
 typedef enum {
     // 保留字段
     IMAGE_SCN_RESERVED_00000001 = 0x00000001,  // 保留，必须为 0
@@ -162,28 +162,28 @@ typedef enum {
 
 // 定义节表结构
 typedef struct {
-    char Name[8];                // 节名称
-    uint32_t VirtualSize;        // 节的虚拟大小
-    uint32_t VirtualAddress;     // 节的虚拟地址
-    uint32_t SizeOfRawData;      // 节在文件中的大小
-    uint32_t PointerToRawData;   // 节在文件中的偏移
-    uint32_t PointerToRelocations; // 重定位表的偏移（通常为 0）
-    uint32_t PointerToLinenumbers; // 行号表偏移（通常为 0）
-    uint16_t NumberOfRelocations; // 重定位表条目数
-    uint16_t NumberOfLinenumbers; // 行号表条目数
-    uint32_t Characteristics;    // 节的标志（如可读、可执行）
+    char name[8];                // 节名称
+    uint32_t virtualSize;        // 节的虚拟大小
+    uint32_t virtualAddress;     // 节的虚拟地址
+    uint32_t sizeOfRawData;      // 节在文件中的大小
+    uint32_t pointerToRawData;   // 节在文件中的偏移
+    uint32_t pointerToRelocations; // 重定位表的偏移（通常为 0）
+    uint32_t pointerToLineNumbers; // 行号表偏移（通常为 0）
+    uint16_t numberOfRelocations; // 重定位表条目数
+    uint16_t numberOfLineNumbers; // 行号表条目数
+    uint32_t characteristics;    // 节的标志（如可读、可执行）
 } SectionHeader;
 
 
 // 定义段信息结构（自定义，用于模拟段的描述）
 typedef struct {
-    uint32_t Type;               // 段类型（模拟 ELF 的段类型）
-    uint32_t Flags;              // 段标志（可读、可写、可执行）
-    uint32_t FileOffset;         // 段在文件中的偏移
-    uint32_t VirtualAddress;     // 段的虚拟地址
-    uint32_t FileSize;           // 段在文件中的大小
-    uint32_t MemorySize;         // 段在内存中的大小
-    uint32_t Alignment;          // 对齐方式
+    uint32_t type;               // 段类型（模拟 ELF 的段类型）
+    uint32_t flags;              // 段标志（可读、可写、可执行）
+    uint32_t fileOffset;         // 段在文件中的偏移
+    uint32_t virtualAddress;     // 段的虚拟地址
+    uint32_t fileSize;           // 段在文件中的大小
+    uint32_t memorySize;         // 段在内存中的大小
+    uint32_t alignment;          // 对齐方式
 } ProgramSegment;
 
 size_t getPeHeaderSize();

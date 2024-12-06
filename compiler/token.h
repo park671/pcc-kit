@@ -14,8 +14,9 @@ enum TokenType {
     TOKEN_BOOL,
     TOKEN_INTEGER,
     TOKEN_FLOAT,
-    TOKEN_ARRAY,//todo: impl this
-    TOKEN_CHARS,//todo: special case array
+    TOKEN_ARRAY,
+    TOKEN_CHARS,
+    TOKEN_CHAR,
     TOKEN_KEYWORD,
     TOKEN_TYPE,
     TOKEN_POINTER_TYPE,//field same to type, but means this type's pointer

@@ -23,11 +23,11 @@ CoffHeader *createCoffHeader(uint16_t machine,
     }
     // 填充 COFF 头
     memset(coffHeader, 0, sizeof(CoffHeader));
-    coffHeader->Signature = 0x00004550;  // "PE\0\0"
-    coffHeader->Machine = machine;
-    coffHeader->NumberOfSections = numberOfSections;
-    coffHeader->SizeOfOptionalHeader = sizeof(OptionalHeader);
-    coffHeader->Characteristics = IMAGE_FILE_EXECUTABLE_IMAGE | IMAGE_FILE_LARGE_ADDRESS_AWARE;  // 可执行、无重定位信息
+    coffHeader->signature = 0x00004550;  // "PE\0\0"
+    coffHeader->machine = machine;
+    coffHeader->numberOfSections = numberOfSections;
+    coffHeader->sizeOfOptionalHeader = sizeof(OptionalHeader);
+    coffHeader->characteristics = IMAGE_FILE_EXECUTABLE_IMAGE | IMAGE_FILE_LARGE_ADDRESS_AWARE;  // 可执行、无重定位信息
 
     return coffHeader;
 
@@ -51,40 +51,40 @@ OptionalHeader *createOptionalHeader(uint16_t numberOfSections,
     memset(optionalHeader, 0, sizeof(OptionalHeader));
 
     // 基础字段
-    optionalHeader->Magic = 0x20B; // PE32+ Magic number
-    optionalHeader->MajorLinkerVersion = 14; // Linker major version
-    optionalHeader->MinorLinkerVersion = 42; // Linker minor version
-    optionalHeader->SizeOfCode = sizeOfCode; // Size of code
-    optionalHeader->SizeOfInitializedData = 0x6600; // Size of initialized data
-    optionalHeader->SizeOfUninitializedData = 0; // Size of uninitialized data
-    optionalHeader->AddressOfEntryPoint = entryPoint; // Entry point address
-    optionalHeader->BaseOfCode = 0x1000; // Base of code
-    optionalHeader->ImageBase = imageBase; // Image base
-    optionalHeader->SectionAlignment = sectionAlignment; // Section alignment
-    optionalHeader->FileAlignment = fileAlignment; // File alignment
+    optionalHeader->magic = 0x20B; // PE32+ magic number
+    optionalHeader->majorLinkerVersion = 14; // Linker major version
+    optionalHeader->minorLinkerVersion = 42; // Linker minor version
+    optionalHeader->sizeOfCode = sizeOfCode; // size of code
+    optionalHeader->sizeOfInitializedData = 0x6600; // size of initialized data
+    optionalHeader->sizeOfUninitializedData = 0; // size of uninitialized data
+    optionalHeader->addressOfEntryPoint = entryPoint; // Entry point address
+    optionalHeader->baseOfCode = 0x1000; // Base of code
+    optionalHeader->imageBase = imageBase; // Image base
+    optionalHeader->sectionAlignment = sectionAlignment; // Section alignment
+    optionalHeader->fileAlignment = fileAlignment; // File alignment
 
     // 操作系统、镜像和子系统信息
-    optionalHeader->MajorOperatingSystemVersion = 6; // OS major version
-    optionalHeader->MinorOperatingSystemVersion = 2; // OS minor version
-    optionalHeader->MajorImageVersion = 0; // Image major version
-    optionalHeader->MinorImageVersion = 0; // Image minor version
-    optionalHeader->MajorSubsystemVersion = 6; // Subsystem major version
-    optionalHeader->MinorSubsystemVersion = 2; // Subsystem minor version
-    optionalHeader->Win32VersionValue = 0; // Reserved, must be 0
-    optionalHeader->SizeOfImage = 0x2000; // Size of image fixme
-    optionalHeader->SizeOfHeaders = getPeHeaderSize(); // Size of headers
-    optionalHeader->CheckSum = 0; // Checksum (can be 0 if unused)
-    optionalHeader->Subsystem = 3; // Subsystem (3 = Windows CUI)
-    optionalHeader->DllCharacteristics = 0x8160; // DLL characteristics:
+    optionalHeader->majorOperatingSystemVersion = 6; // OS major version
+    optionalHeader->minorOperatingSystemVersion = 2; // OS minor version
+    optionalHeader->majorImageVersion = 0; // Image major version
+    optionalHeader->minorImageVersion = 0; // Image minor version
+    optionalHeader->majorSubsystemVersion = 6; // subsystem major version
+    optionalHeader->minorSubsystemVersion = 2; // subsystem minor version
+    optionalHeader->win32VersionValue = 0; // Reserved, must be 0
+    optionalHeader->sizeOfImage = 0x2000; // size of image fixme
+    optionalHeader->sizeOfHeaders = getPeHeaderSize(); // size of headers
+    optionalHeader->checkSum = 0; // Checksum (can be 0 if unused)
+    optionalHeader->subsystem = 3; // subsystem (3 = Windows CUI)
+    optionalHeader->dllCharacteristics = 0x8160; // DLL characteristics:
     // High Entropy Virtual Addresses, Dynamic base, NX compatible, Terminal Server Aware
 
     // 堆栈和堆的大小
-    optionalHeader->SizeOfStackReserve = 0x100000; // Stack reserve size
-    optionalHeader->SizeOfStackCommit = 0x1000; // Stack commit size
-    optionalHeader->SizeOfHeapReserve = 0x100000; // Heap reserve size
-    optionalHeader->SizeOfHeapCommit = 0x1000; // Heap commit size
-    optionalHeader->LoaderFlags = 0; // Loader flags (reserved, must be 0)
-    optionalHeader->NumberOfRvaAndSizes = 16; // Number of directories
+    optionalHeader->sizeOfStackReserve = 0x100000; // Stack reserve size
+    optionalHeader->sizeOfStackCommit = 0x1000; // Stack commit size
+    optionalHeader->sizeOfHeapReserve = 0x100000; // Heap reserve size
+    optionalHeader->sizeOfHeapCommit = 0x1000; // Heap commit size
+    optionalHeader->loaderFlags = 0; // Loader flags (reserved, must be 0)
+    optionalHeader->numberOfRvaAndSizes = 16; // Number of directories
 
     // 数据目录 (Data Directory)
     uint32_t dataDirectories[16][2] = {
@@ -108,10 +108,10 @@ OptionalHeader *createOptionalHeader(uint16_t numberOfSections,
 
     // 将数据目录逐一填充到可选头中
     for (int i = 0; i < 16; i++) {
-//        optionalHeader->DataDirectory[i].VirtualAddress = dataDirectories[i][0];
-//        optionalHeader->DataDirectory[i].Size = dataDirectories[i][1];
-        optionalHeader->DataDirectory[i].VirtualAddress = 0;
-        optionalHeader->DataDirectory[i].Size = 0;
+//        optionalHeader->dataDirectory[i].virtualAddress = dataDirectories[i][0];
+//        optionalHeader->dataDirectory[i].size = dataDirectories[i][1];
+        optionalHeader->dataDirectory[i].virtualAddress = 0;
+        optionalHeader->dataDirectory[i].size = 0;
     }
 
     return optionalHeader;
@@ -159,17 +159,17 @@ SectionHeader *createSectionHeader(const char *name,
     }
 
     // 填充节头字段
-    memset(sectionheader->Name, 0, sizeof(sectionheader->Name));
-    strncpy(sectionheader->Name, name, 8); // 设置节名称（最多8字节）
-    sectionheader->VirtualSize = virtualSize;          // 设置节的虚拟大小
-    sectionheader->VirtualAddress = virtualAddress;    // 设置节的虚拟地址
-    sectionheader->SizeOfRawData = sizeOfRawData;      // 设置节在文件中的大小
-    sectionheader->PointerToRawData = pointerToRawData;// 设置节在文件中的偏移
-    sectionheader->PointerToRelocations = 0;          // 无重定位
-    sectionheader->PointerToLinenumbers = 0;          // 无行号表
-    sectionheader->NumberOfRelocations = 0;           // 重定位表条目数
-    sectionheader->NumberOfLinenumbers = 0;           // 行号表条目数
-    sectionheader->Characteristics = characteristics; // 设置节的标志
+    memset(sectionheader->name, 0, sizeof(sectionheader->name));
+    strncpy(sectionheader->name, name, 8); // 设置节名称（最多8字节）
+    sectionheader->virtualSize = virtualSize;          // 设置节的虚拟大小
+    sectionheader->virtualAddress = virtualAddress;    // 设置节的虚拟地址
+    sectionheader->sizeOfRawData = sizeOfRawData;      // 设置节在文件中的大小
+    sectionheader->pointerToRawData = pointerToRawData;// 设置节在文件中的偏移
+    sectionheader->pointerToRelocations = 0;          // 无重定位
+    sectionheader->pointerToLineNumbers = 0;          // 无行号表
+    sectionheader->numberOfRelocations = 0;           // 重定位表条目数
+    sectionheader->numberOfLineNumbers = 0;           // 行号表条目数
+    sectionheader->characteristics = characteristics; // 设置节的标志
 
     return sectionheader; // 返回已填充的节头指针
 }
@@ -192,13 +192,13 @@ ProgramSegment *createProgramSegment(uint32_t type,
     }
 
     // 填充段信息字段
-    segment->Type = type;              // 设置段类型
-    segment->Flags = flags;            // 设置段标志
-    segment->FileOffset = fileOffset;  // 设置段在文件中的偏移
-    segment->VirtualAddress = virtualAddress; // 设置段的虚拟地址
-    segment->FileSize = fileSize;      // 设置段在文件中的大小
-    segment->MemorySize = memorySize;  // 设置段在内存中的大小
-    segment->Alignment = alignment;    // 设置段的对齐要求
+    segment->type = type;              // 设置段类型
+    segment->flags = flags;            // 设置段标志
+    segment->fileOffset = fileOffset;  // 设置段在文件中的偏移
+    segment->virtualAddress = virtualAddress; // 设置段的虚拟地址
+    segment->fileSize = fileSize;      // 设置段在文件中的大小
+    segment->memorySize = memorySize;  // 设置段在内存中的大小
+    segment->alignment = alignment;    // 设置段的对齐要求
 
     return segment; // 返回已填充的段信息指针
 }

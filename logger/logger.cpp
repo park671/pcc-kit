@@ -5,25 +5,22 @@
 #include "logger.h"
 #include <stdarg.h>
 #include <stdio.h>
-#include <sys/time.h>
+#include <time.h>
 
-char *get_current_time_str() {
-    static char buffer[30];
-    struct timeval tv;
-    gettimeofday(&tv, nullptr);
+static volatile long firstTs = 0;
 
-    struct tm *local = localtime(&tv.tv_sec);
+void initLogger() {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    firstTs = ts.tv_sec;
+}
 
-    snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d %02d:%02d:%02d.%03d",
-             local->tm_year + 1900,
-             local->tm_mon + 1,
-             local->tm_mday,
-             local->tm_hour,
-             local->tm_min,
-             local->tm_sec,
-             tv.tv_usec / 1000);
-
-    return buffer;
+void printCurrentTime() {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    long ms = ts.tv_nsec / 1000000;
+    long ns = (ts.tv_nsec / 1000) % 1000;
+    printf("[%lds %03ldms %03ldns] ", (ts.tv_sec - firstTs), ms, ns);
 }
 
 void logd(const char *tag, const char *fmt, ...) {
@@ -32,7 +29,8 @@ void logd(const char *tag, const char *fmt, ...) {
     }
     va_list args;
     va_start(args, fmt);
-    fprintf(stdout, "%s - %s:\t\t", get_current_time_str(), tag);
+    printCurrentTime();
+    fprintf(stdout, "%s:\t\t", tag);
     vfprintf(stdout, fmt, args);
     fprintf(stdout, "\n");
     va_end(args);
@@ -44,7 +42,7 @@ void loge(const char *tag, const char *fmt, ...) {
     }
     va_list args;
     va_start(args, fmt);
-    fprintf(stderr, "%s - %s:\t\t", get_current_time_str(), tag);
+    fprintf(stderr, "%s:\t\t", tag);
     vfprintf(stderr, fmt, args);
     fprintf(stderr, "\n");
     va_end(args);

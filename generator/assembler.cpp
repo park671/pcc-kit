@@ -176,7 +176,7 @@ void generatePeArm64(Mir *mir,
                                     sectionCount,
                                     textSectionFileSize,
                                     textSectionVirtualAddress,
-                                    IMAGE_BASE_64_EXE, // 默认 ImageBase
+                                    IMAGE_BASE_64_EXE, // 默认 imageBase
                                     ramAlignment,
                                     fileAlignment);
 
@@ -304,7 +304,7 @@ void generateTargetFile(
         Platform platform,
         int sharedLibrary,
         const char *outputFileName) {
-    logd(ASSEMBLER_TAG, "target generation...");
+    logd(ASSEMBLER_TAG, "assemble target...");
     if (platform == PLATFORM_LINUX) {
         switch (arch) {
             case ARCH_ARM64: {

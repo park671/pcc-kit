@@ -140,6 +140,7 @@ void processParams(int argc, char **argv) {
 }
 
 int main(int argc, char **argv) {
+    initLogger();
     processParams(argc, argv);
     ProcessedSource *source = preprocess(sourceFileName);
     Token *tokens = buildTokens(source);

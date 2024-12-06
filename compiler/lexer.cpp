@@ -16,8 +16,8 @@ static const size_t keywordSize = 6;
 static const char *types[] = {"void", "char", "int", "short", "long", "float", "double"};
 static const size_t typeSize = 7;
 
-static const char boundaries[] = "{}(),;";
-static const size_t boundarySize = 6;
+static const char boundaries[] = "[]{}(),;";
+static const size_t boundarySize = 8;
 
 static const char operators[] = "=+-*/<>!";
 static const size_t operatorSize = 8;
@@ -46,6 +46,8 @@ const char *getTokenTypeName(TokenType tokenType) {
             return "bool";
         case TOKEN_CHARS:
             return "chars";
+        case TOKEN_CHAR:
+            return "char";
         case TOKEN_POINTER_TYPE:
             return "pointer";
         case TOKEN_POINTER_OPERATOR:
@@ -99,8 +101,12 @@ inline static bool isBoundary(char a) {
     return false;
 }
 
-inline static bool isQuotation(char a) {
+inline static bool isDoubleQuotation(char a) {
     return a == '\"';
+}
+
+inline static bool isQuotation(char a) {
+    return a == '\'';
 }
 
 inline static bool isEscape(char a) {
@@ -178,9 +184,11 @@ static Token *lexer(Token *tail, const char *buffer) {
     char tmp[256];
     memset(((void *) tmp), 0, 256);
     bool nextCharEscape = false;
-    bool inCharsSession = false;
+    bool inStringSession = false;
+    bool inCharSession = false;
+    int charCount = 0;
     for (int i = 0; i < length; i++) {
-        if (inCharsSession && isEscape(buffer[i])) {
+        if (inStringSession && isEscape(buffer[i])) {
             nextCharEscape = true;
             continue;
         } else if (nextCharEscape) {
@@ -192,11 +200,28 @@ static Token *lexer(Token *tail, const char *buffer) {
                 snprintf(tmp, 256, "%s\t", tmp);
             } else if (buffer[i] == 'b') {
                 snprintf(tmp, 256, "%s\b", tmp);
+            } else if (buffer[i] == '\"') {
+                snprintf(tmp, 256, "%s\"", tmp);
+            } else if (buffer[i] == '\'') {
+                snprintf(tmp, 256, "%s\'", tmp);
             }
             nextCharEscape = false;
             continue;
-        } else if (isQuotation(buffer[i]) && !nextCharEscape) {
-            if (!inCharsSession) {
+        } else if (isQuotation(buffer[i])) {
+            if (!inCharSession) {
+                tail = processCompletedString(tail, tmp);
+            } else {
+                Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
+                token->tokenType = TOKEN_CHAR;
+                token->content = makeCharsCopy(tmp);
+                tail->next = token;
+                tail = token;
+                memset(((void *) tmp), 0, 256);
+            }
+            inCharSession = !inCharSession;
+            continue;
+        } else if (isDoubleQuotation(buffer[i])) {
+            if (!inStringSession) {
                 tail = processCompletedString(tail, tmp);
             } else {
                 Token *token = (Token *) (pccMalloc(LEXER_TAG, sizeof(Token)));
@@ -206,9 +231,9 @@ static Token *lexer(Token *tail, const char *buffer) {
                 tail = token;
                 memset(((void *) tmp), 0, 256);
             }
-            inCharsSession = !inCharsSession;
+            inStringSession = !inStringSession;
             continue;
-        } else if (inCharsSession) {
+        } else if (inStringSession) {
             snprintf(tmp, 256, "%s%c", tmp, buffer[i]);
             nextCharEscape = false;
             continue;

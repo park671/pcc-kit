@@ -7,6 +7,8 @@
 
 #define ENABLE_LOGGER true
 
+void initLogger();
+
 void logd(const char *tag, const char *fmt, ...);
 
 void loge(const char *tag, const char *fmt, ...);
