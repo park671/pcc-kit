@@ -12,7 +12,6 @@
 #include "file.h"
 #include "pe.h"
 #include "macho.h"
-#include "sys/syscall.h"
 
 static const char *ASSEMBLER_TAG = "assembler";
 
