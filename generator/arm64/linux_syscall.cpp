@@ -13,7 +13,7 @@ void initLinuxArm64ProgramStart() {
     binaryOp2(INST_MOV, 1, X30, 0, true);
     binaryOpBranch(INST_BL, UNUSED, "main");
     //keep the "main" ret value in X0
-    binaryOp2(INST_MOV, 1, X8, SYS_EXIT, true);
+    binaryOp2(INST_MOV, 1, X8, LINUX_ARM64_SYS_EXIT, true);
     binaryOpSvc(INST_SVC, 0);
 }
 
@@ -21,15 +21,15 @@ void initLinuxArm64ProgramStart() {
 void initLinuxArm64SyscallWrapper() {
     logd(LINUX_SYSCALL_TAG, "static link syscall method...");
     emitLabel("write");
-    binaryOp2(INST_MOV, 1, X8, SYS_WRITE, true);
+    binaryOp2(INST_MOV, 1, X8, LINUX_ARM64_SYS_WRITE, true);
     binaryOpSvc(INST_SVC, 0);
     binaryOpRet(INST_RET);
     emitLabel("read");
-    binaryOp2(INST_MOV, 1, X8, SYS_READ, true);
+    binaryOp2(INST_MOV, 1, X8, LINUX_ARM64_SYS_READ, true);
     binaryOpSvc(INST_SVC, 0);
     binaryOpRet(INST_RET);
     emitLabel("fork");
-    binaryOp2(INST_MOV, 1, X8, SYS_FORK, true);
+    binaryOp2(INST_MOV, 1, X8, LINUX_ARM64_SYS_FORK, true);
     binaryOpSvc(INST_SVC, 0);
     binaryOpRet(INST_RET);
 }
