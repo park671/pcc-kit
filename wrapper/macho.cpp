@@ -59,7 +59,7 @@ segment_command_64 *createSegmentCommand64(const char *segname,
 
     // 填充段命令字段
     segment->cmd = LC_SEGMENT_64;       // 加载命令类型
-    segment->cmdsize = sizeof(segment_command_64); // 命令大小
+    segment->cmdsize = sizeof(segment_command_64) + (nsects * sizeof(section_64)); // 命令大小
     strncpy(segment->segname, segname, 16); // 段名称（最多 16 字节）
     segment->vmaddr = vmaddr;          // 虚拟地址
     segment->vmsize = vmsize;          // 虚拟内存大小

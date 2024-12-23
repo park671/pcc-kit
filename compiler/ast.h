@@ -7,6 +7,8 @@
 
 #include "stdint.h"
 
+struct AstExpression;
+
 enum PrimitiveType {
     TYPE_UNKNOWN,
 
@@ -90,6 +92,7 @@ enum IdentityType {
 struct AstIdentity {
     IdentityType type;
     const char *name;
+    AstExpression *arrayIndex;//only set when IdentityType=ID_ARRAY
 };
 
 struct AstParamDefine {
@@ -197,8 +200,6 @@ struct AstExpressionArithmetic {
     AstArithmeticItem *arithmeticItem;
     AstExpressionArithmeticMore *arithmeticExpressMore;
 };
-
-struct AstExpression;
 
 struct AstExpressionAssignment {
     AstIdentity *identity;

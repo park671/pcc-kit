@@ -157,6 +157,6 @@ ProcessedSource *preprocess(const char *sourceFilePath) {
     return sourceHead;
 }
 
-extern void releasePreProcessorMemory() {
+void releasePreProcessorMemory() {
     pccFreeSpace(PREPROCESSOR_TAG);
 }

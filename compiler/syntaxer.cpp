@@ -430,10 +430,51 @@ Token *travelAst(Token *token, void *currentNode, AstNodeType nodeType) {
         }
         case NODE_EXPRESSION: {
             AstExpression *astExpression = (AstExpression *) currentNode;
+            if (token->tokenType == TOKEN_IDENTIFIER && token->next != nullptr) {
+                if (token->next->tokenType == TOKEN_BOUNDARY
+                    && strcmp(token->next->content, "[") == 0) {
+                    Token *forwardToken = token;
+                    while (forwardToken != nullptr) {
+
+                    }
+                }
+                if (token->next->tokenType == TOKEN_OPERATOR
+                    && strcmp(token->next->content, "=") == 0) {
+                    //assignment
+                    if (hasVarDefine(token->content)) {
+                        astExpression->expressionType = EXPRESSION_ASSIGNMENT;
+                        astExpression->assignmentExpression = (AstExpressionAssignment *) pccMalloc(SYNTAX_TAG,
+                                                                                                    sizeof(AstExpressionAssignment));
+                        token = travelAst(token, astExpression->assignmentExpression, NODE_EXPRESSION_ASSIGNMENT);
+                    } else {
+                        loge(SYNTAX_TAG, "[-]error: undefined var: %s", token->content);
+                    }
+                    break;
+                } else if (token->next->tokenType == TOKEN_BOUNDARY
+                           && strcmp(token->next->content, "[") == 0) {
+
+                }
+            }
+
+
             if (token->tokenType == TOKEN_IDENTIFIER
                 && token->next != nullptr
                 && token->next->tokenType == TOKEN_OPERATOR
                 && strcmp(token->next->content, "=") == 0) {
+                //assignment
+                if (hasVarDefine(token->content)) {
+                    astExpression->expressionType = EXPRESSION_ASSIGNMENT;
+                    astExpression->assignmentExpression = (AstExpressionAssignment *) pccMalloc(SYNTAX_TAG,
+                                                                                                sizeof(AstExpressionAssignment));
+                    token = travelAst(token, astExpression->assignmentExpression, NODE_EXPRESSION_ASSIGNMENT);
+                } else {
+                    loge(SYNTAX_TAG, "[-]error: undefined var: %s", token->content);
+                }
+                break;
+            } if (token->tokenType == TOKEN_IDENTIFIER
+                  && token->next != nullptr
+                  && token->next->tokenType == TOKEN_BOUNDARY
+                  && strcmp(token->next->content, "[") == 0) {
                 //assignment
                 if (hasVarDefine(token->content)) {
                     astExpression->expressionType = EXPRESSION_ASSIGNMENT;

@@ -247,9 +247,22 @@ void generateMachoArm64(Mir *mir,
     currentVmAddr += pageZeroSize;
     currentVmAddr = alignTo(currentVmAddr, ram_alignment);
 
+    const char *TEXT_SEGMENT_NAME = "__TEXT";
+    //section64:text
+    uint64_t codeVmAddr = page0Size + codeFileAddr;
+    section_64 *textSection = createSection64("__text",
+                                              TEXT_SEGMENT_NAME,
+                                              codeVmAddr,
+                                              instBuffer->size,
+                                              codeFileAddr,
+                                              file_alignment,
+                                              0,
+                                              0,
+                                              S_REGULAR | S_ATTR_PURE_INSTRUCTIONS | S_ATTR_SOME_INSTRUCTIONS);
+
+
     //lc_segment64: text
     uint64_t textVmSize = alignTo(codeFileAddr + instBuffer->size, ram_alignment);
-    const char *TEXT_SEGMENT_NAME = "__TEXT";
     segment_command_64 *textLc = createSegmentCommand64(TEXT_SEGMENT_NAME,
                                                         currentVmAddr,
                                                         textVmSize,
@@ -267,17 +280,6 @@ void generateMachoArm64(Mir *mir,
     entry_point_command *mainLc = createEntryPointCommand(codeFileAddr, 0);
     loadCommandCount++;
 
-    //section64:text
-    uint64_t codeVmAddr = page0Size + codeFileAddr;
-    section_64 *textSection = createSection64("__text",
-                                              TEXT_SEGMENT_NAME,
-                                              codeVmAddr,
-                                              instBuffer->size,
-                                              codeFileAddr,
-                                              file_alignment,
-                                              0,
-                                              0,
-                                              S_REGULAR | S_ATTR_PURE_INSTRUCTIONS | S_ATTR_SOME_INSTRUCTIONS);
 
     mach_header_64 *machHeader = createMachHeader64(
             CPU_TYPE_ARM64,
@@ -290,8 +292,8 @@ void generateMachoArm64(Mir *mir,
     writeFileB(machHeader, sizeof(mach_header_64));
     writeFileB(pageZeroLc, sizeof(segment_command_64));
     writeFileB(textLc, sizeof(segment_command_64));
-    writeFileB(mainLc, sizeof(entry_point_command));
     writeFileB(textSection, sizeof(section_64));
+    writeFileB(mainLc, sizeof(entry_point_command));
     writeEmptyAlignment(file_alignment);
     writeFileB(instBuffer->result, instBuffer->size);
     logd(ASSEMBLER_TAG, "mach-o arm64 generation finish.");
